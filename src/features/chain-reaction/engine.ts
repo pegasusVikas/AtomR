@@ -1,0 +1,24 @@
+export {
+	allPlayersHavePlayed,
+	applyMove,
+	countPlayerOrbs,
+	createInitialBoard,
+	createInitialGameState,
+	getCapacity,
+	getNextPlayer,
+	isLegalMove,
+	recomputeEliminations,
+	recomputeWinner,
+} from "./shared-engine";
+export function isStableBoard(
+	board: Board,
+	rows: number,
+	cols: number,
+): boolean {
+	return board.every((row, rowIndex) =>
+		row.every(
+			(cell, colIndex) =>
+				cell.count < getCapacity(rowIndex, colIndex, rows, cols),
+		),
+	);
+}

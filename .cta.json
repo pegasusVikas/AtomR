@@ -1,0 +1,28 @@
+{
+  "projectName": "atom-reaction",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "includeExamples": true,
+  "tailwind": true,
+  "addOnOptions": {},
+  "envVarValues": {
+    "CONVEX_DEPLOYMENT": "descriptive-raven-760",
+    "VITE_CONVEX_URL": "https://descriptive-raven-760.convex.cloud"
+  },
+  "git": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "biome",
+    "convex",
+    "shadcn",
+    "posthog",
+    "compiler",
+    "better-auth",
+    "tanstack-query",
+    "storybook",
+    "events"
+  ]
+}

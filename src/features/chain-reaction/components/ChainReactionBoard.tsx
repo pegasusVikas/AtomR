@@ -1,0 +1,84 @@
+import { isLegalMove } from "../engine";
+import type { GameState } from "../types";
+import type { ActiveExplosion } from "../useChainReactionGame";
+import ChainReactionCell from "./ChainReactionCell";
+import FlyingOrbOverlay from "./FlyingOrbOverlay";
+
+type ChainReactionBoardProps = {
+	state: GameState;
+	activeColor: string;
+	isAnimating: boolean;
+	activeExplosionKeys: string[];
+	activeCaptureKeys: string[];
+	activeExplosions: ActiveExplosion[];
+	cellSize: number;
+	onPlay: (row: number, col: number) => void;
+};
+
+export default function ChainReactionBoard({
+	state,
+	activeColor,
+	isAnimating,
+	activeExplosionKeys,
+	activeCaptureKeys,
+	activeExplosions,
+	cellSize,
+	onPlay,
+}: ChainReactionBoardProps) {
+	const explosionSet = new Set(activeExplosionKeys);
+	const captureSet = new Set(activeCaptureKeys);
+	const cells = [];
+
+	for (let row = 0; row < state.rows; row += 1) {
+		for (let col = 0; col < state.cols; col += 1) {
+			const positionKey = `${row}:${col}`;
+			cells.push(
+				<ChainReactionCell
+					key={`cell-${row}-${col}`}
+					state={state}
+					cell={state.board[row][col]}
+					position={{ row, col }}
+					activeColor={activeColor}
+					isLegal={isLegalMove(state, row, col)}
+					isAnimating={isAnimating}
+					isExploding={explosionSet.has(positionKey)}
+					isCapturing={captureSet.has(positionKey)}
+					onPlay={() => onPlay(row, col)}
+				/>,
+			);
+		}
+	}
+
+	return (
+		/* 1px gradient border via wrapper technique */
+		<div
+			className="w-full h-full overflow-hidden rounded-2xl p-px"
+			style={{
+				background: `linear-gradient(135deg, ${activeColor}55, ${activeColor}18 50%, ${activeColor}38)`,
+				transition: "background 1s ease",
+				boxShadow: `0 0 40px ${activeColor}14, 0 8px 60px rgba(0,0,0,0.5)`,
+			}}
+		>
+			<div
+				className="relative w-full h-full overflow-hidden rounded-[calc(1rem-1px)]"
+				style={{ background: "#07070b" }}
+			>
+				<div
+					className="grid h-full"
+					style={{
+						gridTemplateColumns: `repeat(${state.cols}, minmax(0, 1fr))`,
+						gridTemplateRows: `repeat(${state.rows}, minmax(0, 1fr))`,
+						gap: "1px",
+						backgroundColor: "rgba(255,255,255,0.10)",
+					}}
+				>
+					{cells}
+				</div>
+				<FlyingOrbOverlay
+					activeExplosions={activeExplosions}
+					cellSize={cellSize}
+				/>
+			</div>
+		</div>
+	);
+}

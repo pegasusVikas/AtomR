@@ -1,0 +1,153 @@
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
+
+export default defineSchema({
+	users: defineTable({
+		authUserId: v.string(),
+		displayName: v.string(),
+		email: v.optional(v.string()),
+		avatarUrl: v.optional(v.string()),
+		createdAt: v.number(),
+		lastSeenAt: v.number(),
+	}).index('by_auth_user_id', ['authUserId']),
+	matchmakingQueue: defineTable({
+		userId: v.id('users'),
+		status: v.union(
+			v.literal('searching'),
+			v.literal('matched'),
+			v.literal('cancelled'),
+		),
+		requestedAt: v.number(),
+		matchId: v.optional(v.id('matches')),
+	}).index('by_status_requested_at', ['status', 'requestedAt'])
+	  .index('by_user_id', ['userId']),
+	privateRooms: defineTable({
+		code: v.string(),
+		hostUserId: v.id('users'),
+		guestUserId: v.optional(v.id('users')),
+		status: v.union(
+			v.literal('open'),
+			v.literal('full'),
+			v.literal('closed'),
+			v.literal('expired'),
+		),
+		rows: v.number(),
+		cols: v.number(),
+		createdAt: v.number(),
+		expiresAt: v.number(),
+		matchId: v.optional(v.id('matches')),
+	})
+		.index('by_code', ['code'])
+		.index('by_host_user_id', ['hostUserId'])
+		.index('by_status', ['status']),
+	matches: defineTable({
+		type: v.union(v.literal('public'), v.literal('private')),
+		roomId: v.optional(v.id('privateRooms')),
+		player1UserId: v.id('users'),
+		player2UserId: v.id('users'),
+		rows: v.number(),
+		cols: v.number(),
+		board: v.array(
+			v.array(
+				v.object({
+					owner: v.union(v.literal('p1'), v.literal('p2'), v.null()),
+					count: v.number(),
+				}),
+			),
+		),
+		currentPlayer: v.union(v.literal('p1'), v.literal('p2')),
+		turnNumber: v.number(),
+		hasPlayed: v.object({
+			p1: v.boolean(),
+			p2: v.boolean(),
+		}),
+		eliminated: v.object({
+			p1: v.boolean(),
+			p2: v.boolean(),
+		}),
+		winner: v.union(v.literal('p1'), v.literal('p2'), v.null()),
+		phase: v.union(
+			v.literal('idle'),
+			v.literal('resolving'),
+			v.literal('gameOver'),
+			v.literal('abandoned'),
+		),
+		lastMoveEvents: v.optional(
+			v.array(
+				v.union(
+					v.object({
+						type: v.literal('place'),
+						row: v.number(),
+						col: v.number(),
+						player: v.union(v.literal('p1'), v.literal('p2')),
+					}),
+					v.object({
+						type: v.literal('explode'),
+						row: v.number(),
+						col: v.number(),
+						player: v.union(v.literal('p1'), v.literal('p2')),
+						affected: v.array(
+							v.object({ row: v.number(), col: v.number() }),
+						),
+					}),
+					v.object({
+						type: v.literal('capture'),
+						row: v.number(),
+						col: v.number(),
+						player: v.union(v.literal('p1'), v.literal('p2')),
+					}),
+				),
+			),
+		),
+		createdAt: v.number(),
+		startedAt: v.number(),
+		endedAt: v.optional(v.number()),
+		lastMoveAt: v.number(),
+		rematchMatchId: v.optional(v.id('matches')),
+	})
+		.index('by_player1_user_id', ['player1UserId'])
+		.index('by_player2_user_id', ['player2UserId'])
+		.index('by_phase', ['phase'])
+		.index('by_room_id', ['roomId']),
+	matchMoves: defineTable({
+		matchId: v.id('matches'),
+		turnNumber: v.number(),
+		userId: v.id('users'),
+		playerId: v.union(v.literal('p1'), v.literal('p2')),
+		row: v.number(),
+		col: v.number(),
+		events: v.array(
+			v.union(
+				v.object({
+					type: v.literal('place'),
+					row: v.number(),
+					col: v.number(),
+					player: v.union(v.literal('p1'), v.literal('p2')),
+				}),
+				v.object({
+					type: v.literal('explode'),
+					row: v.number(),
+					col: v.number(),
+					player: v.union(v.literal('p1'), v.literal('p2')),
+					affected: v.array(v.object({ row: v.number(), col: v.number() })),
+				}),
+				v.object({
+					type: v.literal('capture'),
+					row: v.number(),
+					col: v.number(),
+					player: v.union(v.literal('p1'), v.literal('p2')),
+				}),
+			),
+		),
+		createdAt: v.number(),
+	}).index('by_match_id_turn_number', ['matchId', 'turnNumber']),
+  products: defineTable({
+    title: v.string(),
+    imageId: v.string(),
+    price: v.number(),
+  }),
+  todos: defineTable({
+    text: v.string(),
+    completed: v.boolean(),
+  }),
+})

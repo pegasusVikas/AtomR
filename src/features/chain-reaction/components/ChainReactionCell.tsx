@@ -1,0 +1,214 @@
+import { PLAYER_COLORS } from "../constants";
+import {
+	getCellCapacity,
+	isCellCritical,
+	isCellThreatened,
+} from "../selectors";
+import type { Cell, GameState, Position } from "../types";
+
+type ChainReactionCellProps = {
+	state: GameState;
+	cell: Cell;
+	position: Position;
+	activeColor: string;
+	isLegal: boolean;
+	isAnimating: boolean;
+	isExploding: boolean;
+	isCapturing: boolean;
+	onPlay: () => void;
+};
+
+// Orb positions as percentages of cell dimensions
+const ORB_LAYOUTS: Record<number, Array<{ x: number; y: number }>> = {
+	1: [{ x: 50, y: 50 }],
+	2: [
+		{ x: 33, y: 50 },
+		{ x: 67, y: 50 },
+	],
+	3: [
+		{ x: 50, y: 30 },
+		{ x: 27, y: 67 },
+		{ x: 73, y: 67 },
+	],
+	4: [
+		{ x: 35, y: 35 },
+		{ x: 65, y: 35 },
+		{ x: 35, y: 65 },
+		{ x: 65, y: 65 },
+	],
+};
+
+function OrbDisplay({
+	count,
+	color,
+	isExploding,
+	isCritical,
+}: {
+	count: number;
+	color: string;
+	isExploding: boolean;
+	isCritical: boolean;
+}) {
+	const positions = ORB_LAYOUTS[Math.min(count, 4)] ?? ORB_LAYOUTS[4];
+	return (
+		<>
+			{positions.map((pos, i) => {
+				const delayMs = isExploding ? 0 : i * 18;
+				let animation: string;
+				if (isExploding) {
+					animation =
+						"cr-orb-burst 0.16s cubic-bezier(0.22, 1, 0.36, 1) forwards";
+				} else if (isCritical) {
+					animation = `cr-orb-pop 0.22s ${delayMs}ms cubic-bezier(0.22, 1, 0.36, 1) both, cr-orb-critical 0.78s ${220 + delayMs}ms ease-in-out infinite`;
+				} else {
+					animation = `cr-orb-pop 0.22s ${delayMs}ms cubic-bezier(0.22, 1, 0.36, 1) both`;
+				}
+				return (
+					<span
+						// key includes count + exploding state so remount triggers animation replay
+						// biome-ignore lint/suspicious/noArrayIndexKey: intentional — positional, see above
+						key={`${i}-${count}-${isExploding ? "ex" : "idle"}`}
+						className="absolute rounded-full"
+						style={{
+							left: `${pos.x}%`,
+							top: `${pos.y}%`,
+							width: count >= 4 ? "25%" : "30%",
+							aspectRatio: "1 / 1",
+							backgroundColor: color,
+							boxShadow: isCritical
+								? `0 0 8px ${color}cc, 0 0 20px ${color}88`
+								: `0 0 5px ${color}bb, 0 0 12px ${color}66`,
+							animation,
+							willChange: "transform, opacity",
+						}}
+					/>
+				);
+			})}
+		</>
+	);
+}
+
+export default function ChainReactionCell({
+	state,
+	cell,
+	position,
+	activeColor,
+	isLegal,
+	isAnimating,
+	isExploding,
+	isCapturing,
+	onPlay,
+}: ChainReactionCellProps) {
+	const ownerColor = cell.owner ? PLAYER_COLORS[cell.owner] : null;
+	const capacity = getCellCapacity(state, position.row, position.col);
+	const critical = isCellCritical(state, cell, position.row, position.col);
+	const threatened =
+		cell.owner !== null &&
+		isCellThreatened(state, position.row, position.col, cell.owner);
+	const disabled = !isLegal || isAnimating;
+
+	// Background tint
+	let bgColor = "#141427";
+	if (isExploding && ownerColor)
+		bgColor = `color-mix(in srgb, ${ownerColor} 20%, #07070b)`;
+	else if (isCapturing && ownerColor)
+		bgColor = `color-mix(in srgb, ${ownerColor} 12%, #07070b)`;
+	else if (ownerColor && cell.count > 0)
+		bgColor = `color-mix(in srgb, ${ownerColor} 10%, #141427)`;
+
+	return (
+		<button
+			type="button"
+			onClick={onPlay}
+			disabled={disabled}
+			className="group relative cursor-pointer disabled:cursor-default"
+			aria-label={
+				cell.owner
+					? `${cell.owner} cell with ${cell.count} orb${cell.count === 1 ? "" : "s"}`
+					: "Empty cell"
+			}
+		>
+			{/* Main cell face */}
+			<span
+				className="absolute inset-0 transition-colors duration-200"
+				style={{
+					backgroundColor: bgColor,
+					boxShadow:
+						!cell.owner || cell.count === 0
+							? "inset 0 0 0 1px rgba(255,255,255,0.04)"
+							: "none",
+				}}
+			>
+				{/* Inner ring — critical pulse */}
+				<span
+					className={[
+						"absolute inset-[2px] rounded-[2px] pointer-events-none",
+						critical && ownerColor ? "cr-critical-ring" : "",
+					].join(" ")}
+					style={
+						{
+							"--cr-critical-shadow-lo": `inset 0 0 0 1px ${ownerColor ?? "transparent"}, 0 0 8px ${ownerColor ?? "transparent"}66`,
+							"--cr-critical-shadow-hi": `inset 0 0 0 2px ${ownerColor ?? "transparent"}, 0 0 22px ${ownerColor ?? "transparent"}aa`,
+							boxShadow:
+								critical && ownerColor
+									? `inset 0 0 0 1px ${ownerColor}, 0 0 10px ${ownerColor}77`
+									: threatened
+										? `inset 0 0 0 1px rgba(255,255,255,0.18)`
+										: isCapturing
+											? `inset 0 0 0 1px ${activeColor}88`
+											: "none",
+						} as React.CSSProperties
+					}
+				/>
+
+				{/* Capture ripple — expanding ring when orb lands */}
+				{isCapturing && ownerColor && (
+					<span
+						className="cr-capture-ripple absolute inset-[3px] rounded-[1px] pointer-events-none"
+						style={{
+							border: `1.5px solid ${ownerColor}cc`,
+							backgroundColor: "transparent",
+						}}
+					/>
+				)}
+
+				{/* Orbs */}
+				{cell.owner && cell.count > 0 && ownerColor && (
+					<OrbDisplay
+						count={cell.count}
+						color={ownerColor}
+						isExploding={isExploding}
+						isCritical={critical}
+					/>
+				)}
+
+				{/* Count / capacity — bottom right, monospace tiny */}
+				{cell.count > 0 && (
+					<span
+						className="absolute bottom-[5%] right-[7%] leading-none pointer-events-none select-none"
+						style={{
+							fontFamily: "'JetBrains Mono', monospace",
+							fontSize: "clamp(6px, 1.4vw, 9px)",
+							color: ownerColor
+								? `color-mix(in srgb, ${ownerColor} 60%, rgba(255,255,255,0.2))`
+								: "rgba(255,255,255,0.25)",
+						}}
+					>
+						{cell.count}/{capacity}
+					</span>
+				)}
+
+				{/* Hover glow overlay — legal, non-animating only */}
+				{!disabled && (
+					<span
+						className="absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
+						style={{
+							backgroundColor: `${activeColor}1a`,
+							boxShadow: `inset 0 0 0 1px ${activeColor}55`,
+						}}
+					/>
+				)}
+			</span>
+		</button>
+	);
+}
