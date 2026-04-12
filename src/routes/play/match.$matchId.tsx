@@ -6,10 +6,15 @@ import { api } from "../../../convex/_generated/api";
 import ChainReactionBoard from "#/features/chain-reaction/components/ChainReactionBoard";
 import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
+import type { Board, PlayerId } from "#/features/chain-reaction/shared";
 import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import { useResolvedGamePlayback } from "#/features/chain-reaction/useResolvedGamePlayback";
 import { authClient } from "#/lib/auth-client";
 import { requireSessionFn } from "#/lib/session-fns";
+
+function cloneBoard(board: Board): Board {
+	return board.map((row) => row.map((cell) => ({ ...cell })));
+}
 
 export const Route = createFileRoute("/play/match/$matchId")({
 	beforeLoad: async () => {
@@ -61,18 +66,51 @@ function MatchPage() {
 			phase: "idle",
 		},
 	);
-	const lastAnimatedTurnRef = useRef<number | null>(null);
+	const prevServerTurnRef = useRef<number | null>(null);
+	const prevServerBoardRef = useRef<Board | null>(null);
+	const [optimisticPlacement, setOptimisticPlacement] = useState<{
+		row: number;
+		col: number;
+		player: PlayerId;
+		baseTurn: number;
+	} | null>(null);
 
 	useEffect(() => {
 		if (!matchState || !match) return;
-		if (lastAnimatedTurnRef.current === match.turnNumber) return;
-		lastAnimatedTurnRef.current = match.turnNumber;
-		if (!match.lastMoveEvents?.length) {
+
+		const previousTurn = prevServerTurnRef.current;
+		const currentTurn = match.turnNumber;
+
+		if (previousTurn === null) {
 			playback.resetToState(matchState);
-			return;
+		} else if (currentTurn === previousTurn) {
+			if (!playback.isAnimating) {
+				playback.resetToState(matchState);
+			}
+		} else if (
+			currentTurn === previousTurn + 1 &&
+			match.lastMoveEvents?.length &&
+			prevServerBoardRef.current
+		) {
+			playback.playEvents(
+				match.lastMoveEvents,
+				matchState,
+				cloneBoard(prevServerBoardRef.current),
+			);
+		} else {
+			playback.resetToState(matchState);
 		}
-		playback.playEvents(match.lastMoveEvents, matchState, matchState.board);
+
+		prevServerTurnRef.current = currentTurn;
+		prevServerBoardRef.current = cloneBoard(matchState.board);
 	}, [match, matchState, playback]);
+
+	useEffect(() => {
+		if (!optimisticPlacement || !match) return;
+		if (match.turnNumber !== optimisticPlacement.baseTurn) {
+			setOptimisticPlacement(null);
+		}
+	}, [match, optimisticPlacement]);
 
 	useEffect(() => {
 		if (!matchState) return;
@@ -127,6 +165,37 @@ function MatchPage() {
 		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
 		: { width: "100%", height: "100%" };
 	const cellSize = boardDims ? boardDims.w / matchState.cols : 0;
+	const displayState = (() => {
+		if (!optimisticPlacement) return playback.state;
+		if (playback.state.turnNumber !== optimisticPlacement.baseTurn) {
+			return playback.state;
+		}
+
+		const { row, col, player } = optimisticPlacement;
+		if (
+			row < 0 ||
+			col < 0 ||
+			row >= playback.state.rows ||
+			col >= playback.state.cols
+		) {
+			return playback.state;
+		}
+
+		const target = playback.state.board[row][col];
+		if (target.owner !== null && target.owner !== player) {
+			return playback.state;
+		}
+
+		const nextBoard = cloneBoard(playback.state.board);
+		nextBoard[row][col] = {
+			owner: player,
+			count: nextBoard[row][col].count + 1,
+		};
+		return {
+			...playback.state,
+			board: nextBoard,
+		};
+	})();
 
 	return (
 		<main
@@ -164,7 +233,7 @@ function MatchPage() {
 			>
 				<div style={boardStyle} className="relative">
 					<ChainReactionBoard
-						state={playback.state}
+						state={displayState}
 						activeColor={activeColor}
 						isAnimating={playback.isAnimating}
 						activeExplosionKeys={playback.activeExplosionKeys}
@@ -174,14 +243,29 @@ function MatchPage() {
 						onPlay={(row, col) => {
 							if (
 								!viewerPlayerId ||
-								viewerPlayerId !== matchState.currentPlayer
+								viewerPlayerId !== matchState.currentPlayer ||
+								playback.isAnimating ||
+								optimisticPlacement !== null
 							)
 								return;
+
+							setOptimisticPlacement({
+								row,
+								col,
+								player: viewerPlayerId,
+								baseTurn: match.turnNumber,
+							});
+
 							void submitMove({
 								matchId: match._id,
 								authUserId: session.user.id,
 								row,
 								col,
+							}).catch(() => {
+								setOptimisticPlacement(null);
+								if (matchState) {
+									playback.resetToState(matchState);
+								}
 							});
 						}}
 					/>

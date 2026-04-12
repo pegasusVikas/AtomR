@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createInitialGameState, getCapacity } from "./engine";
 import type {
 	Board,
@@ -252,12 +252,18 @@ export function useResolvedGamePlayback(externalState: GameState) {
 	);
 	const timersRef = useRef<number[]>([]);
 	const animationCycleRef = useRef(0);
-	const previousTurnRef = useRef(externalState.turnNumber);
+	const isAnimatingRef = useRef(false);
+	const previousSnapshotRef = useRef({
+		turnNumber: externalState.turnNumber,
+		rows: externalState.rows,
+		cols: externalState.cols,
+	});
 
-	function clearPlaybackTimers() {
+	const clearPlaybackTimers = useCallback(() => {
 		for (const timer of timersRef.current) window.clearTimeout(timer);
 		timersRef.current = [];
-	}
+		isAnimatingRef.current = false;
+	}, []);
 
 	useEffect(() => {
 		return () => {
@@ -267,75 +273,86 @@ export function useResolvedGamePlayback(externalState: GameState) {
 	}, []);
 
 	useEffect(() => {
-		if (externalState.turnNumber === previousTurnRef.current) {
+		const previous = previousSnapshotRef.current;
+		const turnChanged = externalState.turnNumber !== previous.turnNumber;
+		const dimensionsChanged =
+			externalState.rows !== previous.rows ||
+			externalState.cols !== previous.cols;
+		const turnWentBack = externalState.turnNumber < previous.turnNumber;
+
+		if (dimensionsChanged || turnWentBack) {
+			clearPlaybackTimers();
 			setResolvedState(externalState);
 			setDisplayedState(externalState);
-			return;
-		}
-		previousTurnRef.current = externalState.turnNumber;
-		setResolvedState(externalState);
-		setDisplayedState(externalState);
-		setActiveExplosionKeys([]);
-		setActiveCaptureKeys([]);
-		setActiveExplosions([]);
-	}, [externalState]);
-
-	function playEvents(
-		events: ResolutionEvent[],
-		nextState: GameState,
-		initialBoard: Board,
-	) {
-		clearPlaybackTimers();
-		if (events.length === 0) {
-			setDisplayedState(nextState);
-			setResolvedState(nextState);
-			return;
-		}
-
-		const steps = buildPlaybackSteps(
-			events,
-			initialBoard,
-			nextState.rows,
-			nextState.cols,
-		);
-		let elapsedMs = 0;
-		for (const step of steps) {
-			const timer = window.setTimeout(() => {
-				const animKey = ++animationCycleRef.current;
-				setDisplayedState((s) => ({
-					...s,
-					board: step.board,
-					phase: "resolving",
-				}));
-				setActiveExplosionKeys(step.explosionKeys);
-				setActiveCaptureKeys(step.captureKeys);
-				setActiveExplosions(
-					step.explosions.map((explosion) => ({ ...explosion, animKey })),
-				);
-			}, elapsedMs);
-			timersRef.current.push(timer);
-			elapsedMs += step.durationMs;
-		}
-
-		const finalizeTimer = window.setTimeout(() => {
-			setDisplayedState(nextState);
-			setResolvedState(nextState);
 			setActiveExplosionKeys([]);
 			setActiveCaptureKeys([]);
 			setActiveExplosions([]);
-		}, elapsedMs + 60);
-		timersRef.current.push(finalizeTimer);
-	}
+		} else if (!turnChanged) {
+			setResolvedState(externalState);
+			if (!isAnimatingRef.current) {
+				setDisplayedState(externalState);
+			}
+		}
 
-	return {
-		state: displayedState,
-		resolvedState,
-		isAnimating: displayedState.phase === "resolving",
-		activeExplosionKeys,
-		activeCaptureKeys,
-		activeExplosions,
-		playEvents,
-		resetToState(nextState: GameState) {
+		previousSnapshotRef.current = {
+			turnNumber: externalState.turnNumber,
+			rows: externalState.rows,
+			cols: externalState.cols,
+		};
+	}, [externalState, clearPlaybackTimers]);
+
+	const playEvents = useCallback(
+		(events: ResolutionEvent[], nextState: GameState, initialBoard: Board) => {
+			clearPlaybackTimers();
+			isAnimatingRef.current = true;
+			setDisplayedState((state) => ({ ...state, phase: "resolving" }));
+			if (events.length === 0) {
+				isAnimatingRef.current = false;
+				setDisplayedState(nextState);
+				setResolvedState(nextState);
+				return;
+			}
+
+			const steps = buildPlaybackSteps(
+				events,
+				initialBoard,
+				nextState.rows,
+				nextState.cols,
+			);
+			let elapsedMs = 0;
+			for (const step of steps) {
+				const timer = window.setTimeout(() => {
+					const animKey = ++animationCycleRef.current;
+					setDisplayedState((s) => ({
+						...s,
+						board: step.board,
+						phase: "resolving",
+					}));
+					setActiveExplosionKeys(step.explosionKeys);
+					setActiveCaptureKeys(step.captureKeys);
+					setActiveExplosions(
+						step.explosions.map((explosion) => ({ ...explosion, animKey })),
+					);
+				}, elapsedMs);
+				timersRef.current.push(timer);
+				elapsedMs += step.durationMs;
+			}
+
+			const finalizeTimer = window.setTimeout(() => {
+				isAnimatingRef.current = false;
+				setDisplayedState(nextState);
+				setResolvedState(nextState);
+				setActiveExplosionKeys([]);
+				setActiveCaptureKeys([]);
+				setActiveExplosions([]);
+			}, elapsedMs + 60);
+			timersRef.current.push(finalizeTimer);
+		},
+		[clearPlaybackTimers],
+	);
+
+	const resetToState = useCallback(
+		(nextState: GameState) => {
 			clearPlaybackTimers();
 			setDisplayedState(nextState);
 			setResolvedState(nextState);
@@ -343,7 +360,30 @@ export function useResolvedGamePlayback(externalState: GameState) {
 			setActiveCaptureKeys([]);
 			setActiveExplosions([]);
 		},
-	};
+		[clearPlaybackTimers],
+	);
+
+	return useMemo(
+		() => ({
+			state: displayedState,
+			resolvedState,
+			isAnimating: displayedState.phase === "resolving",
+			activeExplosionKeys,
+			activeCaptureKeys,
+			activeExplosions,
+			playEvents,
+			resetToState,
+		}),
+		[
+			displayedState,
+			resolvedState,
+			activeExplosionKeys,
+			activeCaptureKeys,
+			activeExplosions,
+			playEvents,
+			resetToState,
+		],
+	);
 }
 
 export type { ActiveExplosion };
