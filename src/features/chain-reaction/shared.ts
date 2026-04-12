@@ -56,6 +56,7 @@ export type ApplyMoveResult = {
 
 export const DEFAULT_ROWS = 6;
 export const DEFAULT_COLS = 9;
+export const ONLINE_TURN_TIME_LIMIT_MS = 30_000;
 
 export const PLAYER_ORDER = ["p1", "p2"] as const satisfies readonly PlayerId[];
 

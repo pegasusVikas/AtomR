@@ -6,7 +6,11 @@ import { api } from "../../../convex/_generated/api";
 import ChainReactionBoard from "#/features/chain-reaction/components/ChainReactionBoard";
 import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
-import type { Board, PlayerId } from "#/features/chain-reaction/shared";
+import {
+	ONLINE_TURN_TIME_LIMIT_MS,
+	type Board,
+	type PlayerId,
+} from "#/features/chain-reaction/shared";
 import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import { useResolvedGamePlayback } from "#/features/chain-reaction/useResolvedGamePlayback";
 import { authClient } from "#/lib/auth-client";
@@ -30,13 +34,22 @@ function MatchPage() {
 	const match = useQuery(api.online.getMatch, {
 		matchId: matchId as Id<"matches">,
 	});
+	const claimTurnTimeout = useMutation(api.online.claimTurnTimeout);
 	const submitMove = useMutation(api.online.submitMove);
 	const startRematch = useMutation(api.online.startRematch);
 	const [rematchPending, setRematchPending] = useState(false);
+	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
+	const timeoutClaimedForRef = useRef<string | null>(null);
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
 		null,
 	);
+	const viewerPlayerId = useMemo(() => {
+		if (!session?.user || !match) return null;
+		if (match.player1?.authUserId === session.user.id) return "p1";
+		if (match.player2?.authUserId === session.user.id) return "p2";
+		return null;
+	}, [match, session?.user]);
 
 	const matchState = useMemo(() => {
 		if (!match) return null;
@@ -66,6 +79,15 @@ function MatchPage() {
 			phase: "idle",
 		},
 	);
+	const {
+		state: playbackState,
+		isAnimating,
+		activeExplosionKeys,
+		activeCaptureKeys,
+		activeExplosions,
+		playEvents,
+		resetToState,
+	} = playback;
 	const prevServerTurnRef = useRef<number | null>(null);
 	const prevServerBoardRef = useRef<Board | null>(null);
 	const [optimisticPlacement, setOptimisticPlacement] = useState<{
@@ -82,28 +104,28 @@ function MatchPage() {
 		const currentTurn = match.turnNumber;
 
 		if (previousTurn === null) {
-			playback.resetToState(matchState);
+			resetToState(matchState);
 		} else if (currentTurn === previousTurn) {
-			if (!playback.isAnimating) {
-				playback.resetToState(matchState);
+			if (!isAnimating) {
+				resetToState(matchState);
 			}
 		} else if (
 			currentTurn === previousTurn + 1 &&
 			match.lastMoveEvents?.length &&
 			prevServerBoardRef.current
 		) {
-			playback.playEvents(
+			playEvents(
 				match.lastMoveEvents,
 				matchState,
 				cloneBoard(prevServerBoardRef.current),
 			);
 		} else {
-			playback.resetToState(matchState);
+			resetToState(matchState);
 		}
 
 		prevServerTurnRef.current = currentTurn;
 		prevServerBoardRef.current = cloneBoard(matchState.board);
-	}, [match, matchState, playback]);
+	}, [match, matchState, isAnimating, playEvents, resetToState]);
 
 	useEffect(() => {
 		if (!optimisticPlacement || !match) return;
@@ -111,6 +133,43 @@ function MatchPage() {
 			setOptimisticPlacement(null);
 		}
 	}, [match, optimisticPlacement]);
+
+	useEffect(() => {
+		if (!match || match.winner) return;
+		setNowMs(Date.now());
+		const timer = window.setInterval(() => {
+			setNowMs(Date.now());
+		}, 250);
+		return () => window.clearInterval(timer);
+	}, [match]);
+
+	const turnDeadlineAt = match
+		? match.lastMoveAt + ONLINE_TURN_TIME_LIMIT_MS
+		: null;
+	const msRemaining = turnDeadlineAt ? Math.max(0, turnDeadlineAt - nowMs) : 0;
+
+	useEffect(() => {
+		if (!session?.user || !match || !viewerPlayerId) return;
+		if (match.winner || match.phase !== "idle") return;
+		if (msRemaining > 0) return;
+
+		const claimKey = `${match._id}:${match.turnNumber}`;
+		if (timeoutClaimedForRef.current === claimKey) return;
+		timeoutClaimedForRef.current = claimKey;
+
+		void claimTurnTimeout({
+			matchId: match._id,
+			authUserId: session.user.id,
+		})
+			.then((result) => {
+				if (!result.timedOut) {
+					timeoutClaimedForRef.current = null;
+				}
+			})
+			.catch(() => {
+				timeoutClaimedForRef.current = null;
+			});
+	}, [claimTurnTimeout, match, msRemaining, session?.user, viewerPlayerId]);
 
 	useEffect(() => {
 		if (!matchState) return;
@@ -152,47 +211,55 @@ function MatchPage() {
 		);
 	}
 
-	const viewerPlayerId =
-		match.player1?.authUserId === session.user.id
-			? "p1"
-			: match.player2?.authUserId === session.user.id
-				? "p2"
-				: null;
 	const activeColor = matchState.winner
 		? PLAYER_COLORS[matchState.winner]
 		: PLAYER_COLORS[matchState.currentPlayer];
+	const secondsRemaining = Math.max(0, Math.ceil(msRemaining / 1000));
+	const winnerName =
+		matchState.winner === "p1"
+			? (match.player1?.displayName ?? "Player 1")
+			: matchState.winner === "p2"
+				? (match.player2?.displayName ?? "Player 2")
+				: null;
+	const turnStatus = matchState.winner
+		? match.phase === "abandoned"
+			? `${winnerName} wins on time.`
+			: `${winnerName} wins.`
+		: matchState.currentPlayer === viewerPlayerId
+			? `Your turn · ${secondsRemaining}s left`
+			: `Opponent turn · ${secondsRemaining}s left`;
 	const boardStyle: React.CSSProperties = boardDims
 		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
 		: { width: "100%", height: "100%" };
 	const cellSize = boardDims ? boardDims.w / matchState.cols : 0;
 	const displayState = (() => {
-		if (!optimisticPlacement) return playback.state;
-		if (playback.state.turnNumber !== optimisticPlacement.baseTurn) {
-			return playback.state;
+		if (!optimisticPlacement) return playbackState;
+		if (playbackState.turnNumber !== optimisticPlacement.baseTurn) {
+			return playbackState;
 		}
 
 		const { row, col, player } = optimisticPlacement;
 		if (
 			row < 0 ||
 			col < 0 ||
-			row >= playback.state.rows ||
-			col >= playback.state.cols
+			row >= playbackState.rows ||
+			col >= playbackState.cols
 		) {
-			return playback.state;
+			return playbackState;
 		}
 
-		const target = playback.state.board[row][col];
+		const target = playbackState.board[row][col];
 		if (target.owner !== null && target.owner !== player) {
-			return playback.state;
+			return playbackState;
 		}
 
-		const nextBoard = cloneBoard(playback.state.board);
+		const nextBoard = cloneBoard(playbackState.board);
 		nextBoard[row][col] = {
 			owner: player,
 			count: nextBoard[row][col].count + 1,
 		};
 		return {
-			...playback.state,
+			...playbackState,
 			board: nextBoard,
 		};
 	})();
@@ -211,18 +278,24 @@ function MatchPage() {
 						{match.player1?.displayName} vs {match.player2?.displayName}
 					</h1>
 					<p className="mt-1 text-sm text-white/55">
-						You are {viewerPlayerId?.toUpperCase()}.{" "}
-						{matchState.currentPlayer === viewerPlayerId
-							? "Your turn."
-							: "Waiting for opponent."}
+						You are {viewerPlayerId?.toUpperCase()}. {turnStatus}
 					</p>
 				</div>
 				<div className="text-right">
 					<p className="text-[10px] uppercase tracking-[0.3em] text-white/35">
-						Board
+						Turn clock
 					</p>
-					<p className="mt-2 font-mono text-lg">
-						{match.rows}×{match.cols}
+					<p
+						className={`mt-2 font-mono text-lg ${
+							!matchState.winner && secondsRemaining <= 5
+								? "text-[#ff847d]"
+								: "text-white"
+						}`}
+					>
+						{matchState.winner ? "--" : `${secondsRemaining}s`}
+					</p>
+					<p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/40">
+						board {match.rows}×{match.cols}
 					</p>
 				</div>
 			</div>
@@ -235,16 +308,16 @@ function MatchPage() {
 					<ChainReactionBoard
 						state={displayState}
 						activeColor={activeColor}
-						isAnimating={playback.isAnimating}
-						activeExplosionKeys={playback.activeExplosionKeys}
-						activeCaptureKeys={playback.activeCaptureKeys}
-						activeExplosions={playback.activeExplosions}
+						isAnimating={isAnimating}
+						activeExplosionKeys={activeExplosionKeys}
+						activeCaptureKeys={activeCaptureKeys}
+						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						onPlay={(row, col) => {
 							if (
 								!viewerPlayerId ||
 								viewerPlayerId !== matchState.currentPlayer ||
-								playback.isAnimating ||
+								isAnimating ||
 								optimisticPlacement !== null
 							)
 								return;
@@ -264,13 +337,13 @@ function MatchPage() {
 							}).catch(() => {
 								setOptimisticPlacement(null);
 								if (matchState) {
-									playback.resetToState(matchState);
+									resetToState(matchState);
 								}
 							});
 						}}
 					/>
 					<GameOverlay
-						state={playback.state}
+						state={playbackState}
 						onReset={async () => {
 							if (!session?.user || !match) return;
 							if (match.rematchMatchId) {

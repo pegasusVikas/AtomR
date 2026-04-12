@@ -4,7 +4,33 @@ import {
 	applyMove,
 	createInitialGameState,
 } from '../src/features/chain-reaction/shared-engine'
-import type { GameState, PlayerId } from '../src/features/chain-reaction/shared'
+import {
+	ONLINE_TURN_TIME_LIMIT_MS,
+	type GameState,
+	type PlayerId,
+} from '../src/features/chain-reaction/shared'
+
+function getOpponentPlayer(playerId: PlayerId): PlayerId {
+	return playerId === 'p1' ? 'p2' : 'p1'
+}
+
+async function timeoutMatchIfTurnExpired(ctx: any, match: any) {
+	if (match.winner) return false
+	if (match.phase !== 'idle') return false
+
+	const now = Date.now()
+	if (now <= match.lastMoveAt + ONLINE_TURN_TIME_LIMIT_MS) {
+		return false
+	}
+
+	await ctx.db.patch(match._id, {
+		winner: getOpponentPlayer(match.currentPlayer),
+		phase: 'abandoned',
+		endedAt: now,
+	})
+
+	return true
+}
 
 function alphabet() {
 	return 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -354,6 +380,31 @@ export const getMatch = query({
 	},
 })
 
+export const claimTurnTimeout = mutation({
+	args: {
+		matchId: v.id('matches'),
+		authUserId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const viewer = await ctx.db
+			.query('users')
+			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
+			.unique()
+		if (!viewer) throw new Error('User not found')
+
+		const match = await ctx.db.get(args.matchId)
+		if (!match) throw new Error('Match not found')
+
+		const isPlayer =
+			match.player1UserId === viewer._id ||
+			match.player2UserId === viewer._id
+		if (!isPlayer) throw new Error('Not part of this match')
+
+		const timedOut = await timeoutMatchIfTurnExpired(ctx, match)
+		return { timedOut }
+	},
+})
+
 export const submitMove = mutation({
 	args: {
 		matchId: v.id('matches'),
@@ -379,6 +430,10 @@ export const submitMove = mutation({
 		if (match.player1UserId === viewer._id) playerId = 'p1'
 		if (match.player2UserId === viewer._id) playerId = 'p2'
 		if (!playerId) throw new Error('Not part of this match')
+
+		const turnTimedOut = await timeoutMatchIfTurnExpired(ctx, match)
+		if (turnTimedOut) throw new Error('Turn timed out')
+
 		if (match.currentPlayer !== playerId) throw new Error('Not your turn')
 
 		const state: GameState = {
