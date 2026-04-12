@@ -8,6 +8,7 @@ import type { GenericCtx } from '@convex-dev/better-auth'
 import authConfig from './auth.config'
 
 const siteUrl = process.env.SITE_URL as string
+const isProd = process.env.NODE_ENV === 'production'
 
 export const authComponent = createClient<DataModel>(components.betterAuth)
 
@@ -16,9 +17,17 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 		baseURL: siteUrl,
 		database: authComponent.adapter(ctx),
 		emailAndPassword: {
-			enabled: true,
+			enabled: !isProd,
 			requireEmailVerification: false,
 		},
+		socialProviders: isProd
+			? {
+					google: {
+						clientId: process.env.GOOGLE_CLIENT_ID as string,
+						clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+					},
+			  }
+			: undefined,
 		plugins: [convex({ authConfig })],
 	})
 }

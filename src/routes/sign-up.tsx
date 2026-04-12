@@ -10,6 +10,9 @@ import { getSessionFn } from "#/lib/session-fns";
 
 export const Route = createFileRoute("/sign-up")({
 	beforeLoad: async () => {
+		if (import.meta.env.PROD) {
+			throw redirect({ to: "/sign-in" });
+		}
 		const session = await getSessionFn();
 		if (session?.user) {
 			throw redirect({ to: "/play" });

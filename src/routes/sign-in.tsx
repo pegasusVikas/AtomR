@@ -19,6 +19,7 @@ export const Route = createFileRoute("/sign-in")({
 });
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
+const isProd = import.meta.env.PROD;
 
 function AtomIcon({ size = 36 }: { size?: number }) {
 	return (
@@ -93,6 +94,7 @@ function SignInPage() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [googleLoading, setGoogleLoading] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -109,6 +111,24 @@ function SignInPage() {
 			setError("An unexpected error occurred");
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleGoogleSignIn = async () => {
+		setError("");
+		setGoogleLoading(true);
+		try {
+			const result = await authClient.signIn.social({
+				provider: "google",
+				callbackURL: "/play",
+			});
+			if (result.error) {
+				setError(result.error.message ?? "Google sign in failed");
+			}
+		} catch {
+			setError("An unexpected error occurred");
+		} finally {
+			setGoogleLoading(false);
 		}
 	};
 
@@ -218,104 +238,150 @@ function SignInPage() {
 							color: "rgba(255,255,255,0.38)",
 						}}
 					>
-						Enter your credentials to continue
+						{isProd
+							? "Continue with your Google account"
+							: "Enter your credentials to continue"}
 					</p>
 
-					<form
-						onSubmit={handleSubmit}
-						style={{ display: "flex", flexDirection: "column", gap: 18 }}
-					>
-						<div>
-							<label htmlFor="email" style={labelStyle}>
-								Email
-							</label>
-							<input
-								id="email"
-								type="email"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								required
-								autoComplete="email"
-								style={inputStyle}
-							/>
-						</div>
-						<div>
-							<label htmlFor="password" style={labelStyle}>
-								Password
-							</label>
-							<input
-								id="password"
-								type="password"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								autoComplete="current-password"
-								minLength={8}
-								style={inputStyle}
-							/>
-						</div>
-
-						{error && (
-							<div
+					{isProd ? (
+						<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+							<button
+								type="button"
+								disabled={googleLoading}
+								onClick={handleGoogleSignIn}
 								style={{
-									padding: "10px 14px",
-									background: "rgba(224,92,58,0.1)",
-									border: "1px solid rgba(224,92,58,0.25)",
-									borderRadius: 10,
+									padding: "13px",
+									background: googleLoading
+										? "rgba(255,255,255,0.04)"
+										: "rgba(58,204,224,0.14)",
+									border: "1px solid rgba(58,204,224,0.35)",
+									borderRadius: 12,
+									color: "white",
 									fontSize: 13,
-									color: "#e87055",
+									fontWeight: 700,
+									letterSpacing: "0.08em",
+									textTransform: "uppercase",
+									cursor: googleLoading ? "not-allowed" : "pointer",
+									fontFamily: F,
+									opacity: googleLoading ? 0.6 : 1,
 								}}
 							>
-								{error}
-							</div>
-						)}
-
-						<button
-							type="submit"
-							disabled={loading}
-							style={{
-								marginTop: 4,
-								padding: "13px",
-								background: loading
-									? "rgba(255,255,255,0.04)"
-									: "rgba(224,92,58,0.14)",
-								border: "1px solid rgba(224,92,58,0.35)",
-								borderRadius: 12,
-								color: "white",
-								fontSize: 13,
-								fontWeight: 700,
-								letterSpacing: "0.1em",
-								textTransform: "uppercase",
-								cursor: loading ? "not-allowed" : "pointer",
-								fontFamily: F,
-								opacity: loading ? 0.6 : 1,
-							}}
+								{googleLoading ? "CONNECTING…" : "CONTINUE WITH GOOGLE"}
+							</button>
+							{error && (
+								<div
+									style={{
+										padding: "10px 14px",
+										background: "rgba(224,92,58,0.1)",
+										border: "1px solid rgba(224,92,58,0.25)",
+										borderRadius: 10,
+										fontSize: 13,
+										color: "#e87055",
+									}}
+								>
+									{error}
+								</div>
+							)}
+						</div>
+					) : (
+						<form
+							onSubmit={handleSubmit}
+							style={{ display: "flex", flexDirection: "column", gap: 18 }}
 						>
-							{loading ? "SIGNING IN…" : "SIGN IN →"}
-						</button>
-					</form>
+							<div>
+								<label htmlFor="email" style={labelStyle}>
+									Email
+								</label>
+								<input
+									id="email"
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									required
+									autoComplete="email"
+									style={inputStyle}
+								/>
+							</div>
+							<div>
+								<label htmlFor="password" style={labelStyle}>
+									Password
+								</label>
+								<input
+									id="password"
+									type="password"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									required
+									autoComplete="current-password"
+									minLength={8}
+									style={inputStyle}
+								/>
+							</div>
+
+							{error && (
+								<div
+									style={{
+										padding: "10px 14px",
+										background: "rgba(224,92,58,0.1)",
+										border: "1px solid rgba(224,92,58,0.25)",
+										borderRadius: 10,
+										fontSize: 13,
+										color: "#e87055",
+									}}
+								>
+									{error}
+								</div>
+							)}
+
+							<button
+								type="submit"
+								disabled={loading}
+								style={{
+									marginTop: 4,
+									padding: "13px",
+									background: loading
+										? "rgba(255,255,255,0.04)"
+										: "rgba(224,92,58,0.14)",
+									border: "1px solid rgba(224,92,58,0.35)",
+									borderRadius: 12,
+									color: "white",
+									fontSize: 13,
+									fontWeight: 700,
+									letterSpacing: "0.1em",
+									textTransform: "uppercase",
+									cursor: loading ? "not-allowed" : "pointer",
+									fontFamily: F,
+									opacity: loading ? 0.6 : 1,
+								}}
+							>
+								{loading ? "SIGNING IN…" : "SIGN IN →"}
+							</button>
+						</form>
+					)}
 				</div>
 
-				<p
-					style={{
-						textAlign: "center",
-						marginTop: 22,
-						fontSize: 13,
-						color: "rgba(255,255,255,0.3)",
-					}}
-				>
-					Don't have an account?{" "}
-					<Link
-						to="/sign-up"
+				{!isProd ? (
+					<p
 						style={{
-							color: "rgba(255,255,255,0.6)",
-							textDecoration: "none",
-							fontWeight: 600,
+							textAlign: "center",
+							marginTop: 22,
+							fontSize: 13,
+							color: "rgba(255,255,255,0.3)",
 						}}
 					>
-						Sign up
-					</Link>
-				</p>
+						Don't have an account?{" "}
+						<Link
+							to="/sign-up"
+							style={{
+								color: "rgba(255,255,255,0.6)",
+								textDecoration: "none",
+								fontWeight: 600,
+							}}
+						>
+							Sign up
+						</Link>
+					</p>
+				) : null}
 
 				<p style={{ textAlign: "center", marginTop: 10 }}>
 					<Link
