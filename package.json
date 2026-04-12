@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@better-auth/cli": "^1.4.21",
+    "@convex-dev/better-auth": "0.11.4",
     "@convex-dev/react-query": "0.1.0",
     "@posthog/react": "^1.7.0",
     "@storybook/react-vite": "^10.2.15",
@@ -39,7 +40,6 @@
     "@tanstack/router-plugin": "^1.132.0",
     "@tanstack/store": "latest",
     "better-auth": "^1.5.3",
-    "better-sqlite3": "^12.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.32.0",
