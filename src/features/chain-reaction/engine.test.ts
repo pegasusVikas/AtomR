@@ -6,9 +6,11 @@ import {
 	countPlayerOrbs,
 	createInitialGameState,
 	getCapacity,
+	getLegalMoves,
 	getNextPlayer,
 	isLegalMove,
 	isStableBoard,
+	pickRandomLegalMove,
 } from "./engine";
 
 import type { GameState } from "./types";
@@ -35,6 +37,29 @@ describe("chain reaction engine", () => {
 		expect(isLegalMove(state, 1, 1)).toBe(true);
 		expect(isLegalMove(state, 0, 0)).toBe(true);
 		expect(isLegalMove(state, 0, 1)).toBe(false);
+	});
+
+	it("enumerates only legal moves for the active player", () => {
+		const state = createInitialGameState(2, 3);
+		state.board[0][0] = { owner: "p1", count: 1 };
+		state.board[0][1] = { owner: "p2", count: 1 };
+		state.board[1][2] = { owner: "p2", count: 1 };
+
+		expect(getLegalMoves(state)).toEqual([
+			{ row: 0, col: 0 },
+			{ row: 0, col: 2 },
+			{ row: 1, col: 0 },
+			{ row: 1, col: 1 },
+		]);
+	});
+
+	it("picks a legal move from the available set", () => {
+		const state = createInitialGameState(2, 2);
+		state.board[0][0] = { owner: "p2", count: 1 };
+		state.board[0][1] = { owner: "p1", count: 1 };
+
+		expect(pickRandomLegalMove(state, () => 0)).toEqual({ row: 0, col: 1 });
+		expect(pickRandomLegalMove(state, () => 0.99)).toEqual({ row: 1, col: 1 });
 	});
 
 	it("explodes cell when move reaches critical mass", () => {

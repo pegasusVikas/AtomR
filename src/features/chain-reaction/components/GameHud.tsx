@@ -1,9 +1,11 @@
 import { PLAYER_COLORS, PLAYER_NAMES } from "../constants";
 import { countPlayerCells, countPlayerOrbsInState } from "../selectors";
-import type { GameState, PlayerId } from "../types";
+import { formatBoardCoordinate } from "../shared";
+import type { GameState, LastMove, PlayerId } from "../types";
 
 type GameHudProps = {
 	state: GameState;
+	lastMove: LastMove | null;
 	onReset: () => void;
 	onSettingsOpen: () => void;
 };
@@ -94,6 +96,7 @@ function PlayerChip({
 
 export default function GameHud({
 	state,
+	lastMove,
 	onReset,
 	onSettingsOpen,
 }: GameHudProps) {
@@ -106,6 +109,9 @@ export default function GameHud({
 		: state.winner
 			? PLAYER_COLORS[state.winner]
 			: "rgba(255,255,255,0.1)";
+	const lastMoveLabel = lastMove
+		? `${PLAYER_NAMES[lastMove.player]} ${formatBoardCoordinate(lastMove.row, lastMove.col)}`
+		: "No moves yet";
 
 	return (
 		<div className="flex items-center gap-2">
@@ -146,6 +152,15 @@ export default function GameHud({
 					}}
 				>
 					chain
+				</span>
+				<span
+					className="text-[8px] uppercase tracking-[0.18em]"
+					style={{
+						fontFamily: "'JetBrains Mono', monospace",
+						color: "rgba(255,255,255,0.26)",
+					}}
+				>
+					{lastMoveLabel}
 				</span>
 				<button
 					type="button"

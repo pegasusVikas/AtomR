@@ -1,5 +1,5 @@
 import { isLegalMove } from "../engine";
-import type { GameState } from "../types";
+import type { GameState, LastMove } from "../types";
 import type { ActiveExplosion } from "../useChainReactionGame";
 import ChainReactionCell from "./ChainReactionCell";
 import FlyingOrbOverlay from "./FlyingOrbOverlay";
@@ -12,6 +12,7 @@ type ChainReactionBoardProps = {
 	activeCaptureKeys: string[];
 	activeExplosions: ActiveExplosion[];
 	cellSize: number;
+	lastMove?: LastMove | null;
 	onPlay: (row: number, col: number) => void;
 };
 
@@ -23,6 +24,7 @@ export default function ChainReactionBoard({
 	activeCaptureKeys,
 	activeExplosions,
 	cellSize,
+	lastMove,
 	onPlay,
 }: ChainReactionBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
@@ -43,6 +45,12 @@ export default function ChainReactionBoard({
 					isAnimating={isAnimating}
 					isExploding={explosionSet.has(positionKey)}
 					isCapturing={captureSet.has(positionKey)}
+					isLastMove={
+						lastMove?.row === row &&
+						lastMove?.col === col &&
+						(lastMove.turnNumber === state.turnNumber ||
+							lastMove.turnNumber === state.turnNumber + 1)
+					}
 					onPlay={() => onPlay(row, col)}
 				/>,
 			);

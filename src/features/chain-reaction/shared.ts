@@ -5,6 +5,11 @@ export type Position = {
 	col: number;
 };
 
+export type LastMove = Position & {
+	player: PlayerId;
+	turnNumber: number;
+};
+
 export type Cell = {
 	owner: PlayerId | null;
 	count: number;
@@ -57,6 +62,8 @@ export type ApplyMoveResult = {
 export const DEFAULT_ROWS = 6;
 export const DEFAULT_COLS = 9;
 export const ONLINE_TURN_TIME_LIMIT_MS = 30_000;
+export const ONLINE_VIEWER_HEARTBEAT_MS = 15_000;
+export const ONLINE_QUEUE_STALE_MS = 60_000;
 
 export const PLAYER_ORDER = ["p1", "p2"] as const satisfies readonly PlayerId[];
 
@@ -65,4 +72,8 @@ export function createPlayerFlags(initialValue = false): PlayerFlags {
 		p1: initialValue,
 		p2: initialValue,
 	};
+}
+
+export function formatBoardCoordinate(row: number, col: number): string {
+	return `${String.fromCharCode(65 + col)}${row + 1}`;
 }

@@ -4,6 +4,7 @@ export type {
 	Cell,
 	GamePhase,
 	GameState,
+	LastMove,
 	PlayerFlags,
 	PlayerId,
 	Position,

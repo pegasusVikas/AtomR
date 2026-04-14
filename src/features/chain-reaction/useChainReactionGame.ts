@@ -8,6 +8,7 @@ import {
 import type {
 	Board,
 	GameState,
+	LastMove,
 	PlayerId,
 	Position,
 	ResolutionEvent,
@@ -266,6 +267,7 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 	const [activeExplosions, setActiveExplosions] = useState<ActiveExplosion[]>(
 		[],
 	);
+	const [lastMove, setLastMove] = useState<LastMove | null>(null);
 	const timersRef = useRef<number[]>([]);
 	const animationCycleRef = useRef(0);
 	const isAnimatingRef = useRef(false);
@@ -302,6 +304,7 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 		setActiveExplosionKeys([]);
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
+		setLastMove(null);
 	}, [rows, cols]);
 
 	function finishPlayback(nextState: GameState) {
@@ -372,6 +375,12 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 	function handleMove({ row, col }: Coordinates) {
 		if (!isLegalMove(displayedState, row, col) || isAnimatingRef.current)
 			return;
+		setLastMove({
+			row,
+			col,
+			player: displayedState.currentPlayer,
+			turnNumber: displayedState.turnNumber + 1,
+		});
 		const result = applyMove(displayedState, row, col);
 		playEvents(result.events, result.state, displayedState.board);
 	}
@@ -384,6 +393,7 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 		setActiveExplosionKeys([]);
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
+		setLastMove(null);
 	}
 
 	return {
@@ -393,6 +403,7 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 		activeExplosionKeys,
 		activeCaptureKeys,
 		activeExplosions,
+		lastMove,
 		handleMove,
 		reset,
 	};

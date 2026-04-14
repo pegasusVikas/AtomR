@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
+import { ONLINE_VIEWER_HEARTBEAT_MS } from "#/features/chain-reaction/shared";
 import { authClient } from "#/lib/auth-client";
 import { requireSessionFn } from "#/lib/session-fns";
 import { api } from "../../../convex/_generated/api";
@@ -48,18 +49,41 @@ function OnlineLobbyPage() {
 		}
 	}, [queueEntry, navigate]);
 
-	if (!session?.user) return null;
+	const user = session?.user ?? null;
+	const displayName = user?.name || user?.email || "Player";
 
-	const user = session.user;
-	const displayName = user.name || user.email || "Player";
-
-	async function ensureViewer() {
+	const ensureViewer = useEffectEvent(async () => {
+		if (!user) return;
 		await syncViewer({
 			authUserId: user.id,
 			displayName,
 			email: user.email,
 		});
-	}
+	});
+
+	useEffect(() => {
+		if (!user) return;
+		let cancelled = false;
+		async function heartbeat() {
+			if (cancelled) return;
+			try {
+				await ensureViewer();
+			} catch {
+				// Presence should be best-effort, not a render blocker.
+			}
+		}
+
+		void heartbeat();
+		const timer = window.setInterval(() => {
+			void heartbeat();
+		}, ONLINE_VIEWER_HEARTBEAT_MS);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [user]);
+
+	if (!user) return null;
 
 	const isInQueue =
 		queueEntry?.status === "searching" ||

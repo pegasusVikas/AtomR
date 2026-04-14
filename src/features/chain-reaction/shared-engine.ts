@@ -178,6 +178,33 @@ export function isLegalMove(
 	return cell.owner === null || cell.owner === state.currentPlayer;
 }
 
+export function getLegalMoves(
+	state: Pick<GameState, "board" | "rows" | "cols" | "currentPlayer" | "phase">,
+): Position[] {
+	const positions: Position[] = [];
+	for (let row = 0; row < state.rows; row += 1) {
+		for (let col = 0; col < state.cols; col += 1) {
+			if (isLegalMove(state, row, col)) {
+				positions.push({ row, col });
+			}
+		}
+	}
+	return positions;
+}
+
+export function pickRandomLegalMove(
+	state: Pick<GameState, "board" | "rows" | "cols" | "currentPlayer" | "phase">,
+	random = Math.random,
+): Position | null {
+	const legalMoves = getLegalMoves(state);
+	if (legalMoves.length === 0) return null;
+	const index = Math.min(
+		legalMoves.length - 1,
+		Math.floor(random() * legalMoves.length),
+	);
+	return legalMoves[index] ?? null;
+}
+
 function resolveBoard(
 	board: Board,
 	rows: number,

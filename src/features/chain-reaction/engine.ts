@@ -8,8 +8,10 @@ export {
 	createInitialBoard,
 	createInitialGameState,
 	getCapacity,
+	getLegalMoves,
 	getNextPlayer,
 	isLegalMove,
+	pickRandomLegalMove,
 	recomputeEliminations,
 	recomputeWinner,
 } from "./shared-engine";

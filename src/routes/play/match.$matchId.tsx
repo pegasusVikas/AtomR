@@ -1,12 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useEffect,
+	useEffectEvent,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import ChainReactionBoard from "#/features/chain-reaction/components/ChainReactionBoard";
 import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import {
 	type Board,
+	formatBoardCoordinate,
+	type LastMove,
 	ONLINE_TURN_TIME_LIMIT_MS,
+	ONLINE_VIEWER_HEARTBEAT_MS,
 	type PlayerId,
 } from "#/features/chain-reaction/shared";
 import { useResolvedGamePlayback } from "#/features/chain-reaction/useResolvedGamePlayback";
@@ -34,6 +44,7 @@ function MatchPage() {
 	const match = useQuery(api.online.getMatch, {
 		matchId: matchId as Id<"matches">,
 	});
+	const syncViewer = useMutation(api.online.syncViewer);
 	const claimTurnTimeout = useMutation(api.online.claimTurnTimeout);
 	const submitMove = useMutation(api.online.submitMove);
 	const startRematch = useMutation(api.online.startRematch);
@@ -44,12 +55,45 @@ function MatchPage() {
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
 		null,
 	);
+	const user = session?.user ?? null;
 	const viewerPlayerId = useMemo(() => {
 		if (!session?.user || !match) return null;
 		if (match.player1?.authUserId === session.user.id) return "p1";
 		if (match.player2?.authUserId === session.user.id) return "p2";
 		return null;
 	}, [match, session?.user]);
+	const displayName = user?.name || user?.email || "Player";
+
+	const heartbeatViewer = useEffectEvent(async () => {
+		if (!user) return;
+		await syncViewer({
+			authUserId: user.id,
+			displayName,
+			email: user.email,
+		});
+	});
+
+	useEffect(() => {
+		if (!user) return;
+		let cancelled = false;
+		async function heartbeat() {
+			if (cancelled) return;
+			try {
+				await heartbeatViewer();
+			} catch {
+				// Match should continue even if presence heartbeat fails.
+			}
+		}
+
+		void heartbeat();
+		const timer = window.setInterval(() => {
+			void heartbeat();
+		}, ONLINE_VIEWER_HEARTBEAT_MS);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [user]);
 
 	const matchState = useMemo(() => {
 		if (!match) return null;
@@ -94,6 +138,7 @@ function MatchPage() {
 		row: number;
 		col: number;
 		player: PlayerId;
+		turnNumber: number;
 		baseTurn: number;
 	} | null>(null);
 
@@ -147,6 +192,21 @@ function MatchPage() {
 		? match.lastMoveAt + ONLINE_TURN_TIME_LIMIT_MS
 		: null;
 	const msRemaining = turnDeadlineAt ? Math.max(0, turnDeadlineAt - nowMs) : 0;
+	const lastMove = useMemo<LastMove | null>(() => {
+		if (optimisticPlacement) {
+			return optimisticPlacement;
+		}
+		const placeEvent = match?.lastMoveEvents?.find(
+			(event) => event.type === "place",
+		);
+		if (!placeEvent || !match) return null;
+		return {
+			row: placeEvent.row,
+			col: placeEvent.col,
+			player: placeEvent.player,
+			turnNumber: match.turnNumber,
+		};
+	}, [match, optimisticPlacement]);
 
 	useEffect(() => {
 		if (!session?.user || !match || !viewerPlayerId) return;
@@ -203,7 +263,7 @@ function MatchPage() {
 		return () => obs.disconnect();
 	}, [matchState]);
 
-	if (!session?.user || !match || !matchState) {
+	if (!user || !match || !matchState) {
 		return (
 			<main className="min-h-[100dvh] bg-[#07070b] p-8 text-white">
 				Loading match…
@@ -280,6 +340,11 @@ function MatchPage() {
 					<p className="mt-1 text-sm text-white/55">
 						You are {viewerPlayerId?.toUpperCase()}. {turnStatus}
 					</p>
+					<p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">
+						{lastMove
+							? `Last move ${lastMove.player.toUpperCase()} ${formatBoardCoordinate(lastMove.row, lastMove.col)}`
+							: "Last move --"}
+					</p>
 				</div>
 				<div className="text-right">
 					<p className="text-[10px] uppercase tracking-[0.3em] text-white/35">
@@ -313,6 +378,7 @@ function MatchPage() {
 						activeCaptureKeys={activeCaptureKeys}
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
+						lastMove={lastMove}
 						onPlay={(row, col) => {
 							if (
 								!viewerPlayerId ||
@@ -326,6 +392,7 @@ function MatchPage() {
 								row,
 								col,
 								player: viewerPlayerId,
+								turnNumber: match.turnNumber + 1,
 								baseTurn: match.turnNumber,
 							});
 

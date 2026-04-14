@@ -15,6 +15,7 @@ type ChainReactionCellProps = {
 	isAnimating: boolean;
 	isExploding: boolean;
 	isCapturing: boolean;
+	isLastMove: boolean;
 	onPlay: () => void;
 };
 
@@ -97,6 +98,7 @@ export default function ChainReactionCell({
 	isAnimating,
 	isExploding,
 	isCapturing,
+	isLastMove,
 	onPlay,
 }: ChainReactionCellProps) {
 	const ownerColor = cell.owner ? PLAYER_COLORS[cell.owner] : null;
@@ -160,6 +162,15 @@ export default function ChainReactionCell({
 						} as React.CSSProperties
 					}
 				/>
+
+				{isLastMove && (
+					<span
+						className="absolute inset-[5px] rounded-[4px] pointer-events-none"
+						style={{
+							boxShadow: `inset 0 0 0 2px ${activeColor}, 0 0 0 1px ${activeColor}44, 0 0 16px ${activeColor}55`,
+						}}
+					/>
+				)}
 
 				{/* Capture ripple — expanding ring when orb lands */}
 				{isCapturing && ownerColor && (

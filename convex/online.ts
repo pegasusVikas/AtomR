@@ -1,10 +1,13 @@
-import { mutation, query } from './_generated/server'
+import { internal } from './_generated/api'
+import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import {
 	applyMove,
 	createInitialGameState,
+	pickRandomLegalMove,
 } from '../src/features/chain-reaction/shared-engine'
 import {
+	ONLINE_QUEUE_STALE_MS,
 	ONLINE_TURN_TIME_LIMIT_MS,
 	type GameState,
 	type PlayerId,
@@ -14,22 +17,27 @@ function getOpponentPlayer(playerId: PlayerId): PlayerId {
 	return playerId === 'p1' ? 'p2' : 'p1'
 }
 
-async function timeoutMatchIfTurnExpired(ctx: any, match: any) {
-	if (match.winner) return false
-	if (match.phase !== 'idle') return false
+function getPlayerUserId(match: any, playerId: PlayerId) {
+	return playerId === 'p1' ? match.player1UserId : match.player2UserId
+}
 
-	const now = Date.now()
-	if (now <= match.lastMoveAt + ONLINE_TURN_TIME_LIMIT_MS) {
-		return false
+function toGameState(match: any): GameState {
+	return {
+		board: match.board,
+		rows: match.rows,
+		cols: match.cols,
+		currentPlayer: match.currentPlayer,
+		turnNumber: match.turnNumber,
+		hasPlayed: match.hasPlayed,
+		eliminated: match.eliminated,
+		winner: match.winner,
+		phase: match.phase === 'gameOver' ? 'gameOver' : 'idle',
 	}
+}
 
-	await ctx.db.patch(match._id, {
-		winner: getOpponentPlayer(match.currentPlayer),
-		phase: 'abandoned',
-		endedAt: now,
-	})
-
-	return true
+function isSearchingQueueEntryStale(now: number, entry: any, user: any) {
+	if (!user) return true
+	return now - Math.max(entry.requestedAt, user.lastSeenAt) > ONLINE_QUEUE_STALE_MS
 }
 
 function alphabet() {
@@ -71,6 +79,155 @@ async function ensureUser(
 		createdAt: now,
 		lastSeenAt: now,
 	})
+}
+
+async function cleanupStaleQueueEntries(ctx: any, now = Date.now()) {
+	const searchingEntries = await ctx.db
+		.query('matchmakingQueue')
+		.withIndex('by_status_requested_at', (q: any) => q.eq('status', 'searching'))
+		.collect()
+
+	for (const entry of searchingEntries) {
+		const user = await ctx.db.get(entry.userId)
+		if (isSearchingQueueEntryStale(now, entry, user)) {
+			await ctx.db.patch(entry._id, { status: 'cancelled' })
+		}
+	}
+}
+
+async function scheduleTurnTimeout(
+	ctx: any,
+	args: {
+		matchId: any
+		expectedTurnNumber: number
+		expectedCurrentPlayer: PlayerId
+		expectedLastMoveAt: number
+	},
+) {
+	const internalApi = internal as any
+	await ctx.scheduler.runAfter(
+		ONLINE_TURN_TIME_LIMIT_MS,
+		internalApi.online.resolveTurnTimeout,
+		args,
+	)
+}
+
+async function persistResolvedMove(
+	ctx: any,
+	match: any,
+	{
+		playerId,
+		userId,
+		row,
+		col,
+		now,
+		result,
+	}: {
+		playerId: PlayerId
+		userId: any
+		row: number
+		col: number
+		now: number
+		result: ReturnType<typeof applyMove>
+	},
+) {
+	await ctx.db.patch(match._id, {
+		board: result.state.board,
+		currentPlayer: result.state.currentPlayer,
+		turnNumber: result.state.turnNumber,
+		hasPlayed: result.state.hasPlayed,
+		eliminated: result.state.eliminated,
+		winner: result.state.winner,
+		phase: result.state.phase,
+		lastMoveEvents: result.events,
+		lastMoveAt: now,
+		endedAt: result.state.winner ? now : undefined,
+	})
+
+	await ctx.db.insert('matchMoves', {
+		matchId: match._id,
+		turnNumber: result.state.turnNumber,
+		userId,
+		playerId,
+		row,
+		col,
+		events: result.events,
+		createdAt: now,
+	})
+
+	if (!result.state.winner) {
+		await scheduleTurnTimeout(ctx, {
+			matchId: match._id,
+			expectedTurnNumber: result.state.turnNumber,
+			expectedCurrentPlayer: result.state.currentPlayer,
+			expectedLastMoveAt: now,
+		})
+	}
+}
+
+async function resolveTurnTimeoutIfNeeded(
+	ctx: any,
+	match: any,
+	expected?: {
+		expectedTurnNumber?: number
+		expectedCurrentPlayer?: PlayerId
+		expectedLastMoveAt?: number
+	},
+) {
+	if (!match) return { timedOut: false }
+	if (match.winner) return { timedOut: false }
+	if (match.phase !== 'idle') return { timedOut: false }
+	if (
+		expected?.expectedTurnNumber !== undefined &&
+		match.turnNumber !== expected.expectedTurnNumber
+	) {
+		return { timedOut: false }
+	}
+	if (
+		expected?.expectedCurrentPlayer !== undefined &&
+		match.currentPlayer !== expected.expectedCurrentPlayer
+	) {
+		return { timedOut: false }
+	}
+	if (
+		expected?.expectedLastMoveAt !== undefined &&
+		match.lastMoveAt !== expected.expectedLastMoveAt
+	) {
+		return { timedOut: false }
+	}
+
+	const now = Date.now()
+	if (now <= match.lastMoveAt + ONLINE_TURN_TIME_LIMIT_MS) {
+		return { timedOut: false }
+	}
+
+	const state = toGameState(match)
+	const move = pickRandomLegalMove(state)
+	if (!move) {
+		await ctx.db.patch(match._id, {
+			winner: getOpponentPlayer(match.currentPlayer),
+			phase: 'gameOver',
+			endedAt: now,
+		})
+		return { timedOut: true, autoMoved: false }
+	}
+
+	const playerId = match.currentPlayer as PlayerId
+	const result = applyMove(state, move.row, move.col)
+	await persistResolvedMove(ctx, match, {
+		playerId,
+		userId: getPlayerUserId(match, playerId),
+		row: move.row,
+		col: move.col,
+		now,
+		result,
+	})
+
+	return {
+		timedOut: true,
+		autoMoved: true,
+		move,
+	}
 }
 
 export const syncViewer = mutation({
@@ -181,6 +338,13 @@ export const joinPrivateRoom = mutation({
 			lastMoveAt: now,
 		})
 
+		await scheduleTurnTimeout(ctx, {
+			matchId,
+			expectedTurnNumber: initialState.turnNumber,
+			expectedCurrentPlayer: initialState.currentPlayer,
+			expectedLastMoveAt: now,
+		})
+
 		await ctx.db.patch(room._id, {
 			guestUserId,
 			status: 'full',
@@ -198,6 +362,8 @@ export const joinQueue = mutation({
 		email: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		const now = Date.now()
+		await cleanupStaleQueueEntries(ctx, now)
 		const userId = await ensureUser(
 			ctx,
 			args.authUserId,
@@ -205,7 +371,6 @@ export const joinQueue = mutation({
 			args.email,
 		)
 
-		// Return existing searching entry if any
 		const existing = await ctx.db
 			.query('matchmakingQueue')
 			.withIndex('by_user_id', (q) => q.eq('userId', userId))
@@ -215,15 +380,14 @@ export const joinQueue = mutation({
 			return { queueId: existing._id, status: 'searching' as const, matchId: null }
 		}
 
-		// Find another searching user
-		const opponent = await ctx.db
+		const searchingEntries = await ctx.db
 			.query('matchmakingQueue')
 			.withIndex('by_status_requested_at', (q) => q.eq('status', 'searching'))
-			.first()
+			.collect()
+		const opponent = searchingEntries.find((entry: any) => entry.userId !== userId)
 
-		if (opponent && opponent.userId !== userId) {
+		if (opponent) {
 			const initialState = createInitialGameState(6, 9)
-			const now = Date.now()
 			const matchId = await ctx.db.insert('matches', {
 				type: 'public',
 				player1UserId: opponent.userId,
@@ -242,6 +406,14 @@ export const joinQueue = mutation({
 				startedAt: now,
 				lastMoveAt: now,
 			})
+
+			await scheduleTurnTimeout(ctx, {
+				matchId,
+				expectedTurnNumber: initialState.turnNumber,
+				expectedCurrentPlayer: initialState.currentPlayer,
+				expectedLastMoveAt: now,
+			})
+
 			await ctx.db.patch(opponent._id, { status: 'matched', matchId })
 			const queueId = await ctx.db.insert('matchmakingQueue', {
 				userId,
@@ -252,11 +424,10 @@ export const joinQueue = mutation({
 			return { queueId, status: 'matched' as const, matchId }
 		}
 
-		// Enter queue
 		const queueId = await ctx.db.insert('matchmakingQueue', {
 			userId,
 			status: 'searching',
-			requestedAt: Date.now(),
+			requestedAt: now,
 		})
 		return { queueId, status: 'searching' as const, matchId: null }
 	},
@@ -293,12 +464,21 @@ export const getMyQueueEntry = query({
 			)
 			.unique()
 		if (!viewer) return null
-		return await ctx.db
+
+		const entry = await ctx.db
 			.query('matchmakingQueue')
 			.withIndex('by_user_id', (q) => q.eq('userId', viewer._id))
 			.filter((q) => q.neq(q.field('status'), 'cancelled'))
 			.order('desc')
 			.first()
+		if (!entry) return null
+		if (
+			entry.status === 'searching' &&
+			isSearchingQueueEntryStale(Date.now(), entry, viewer)
+		) {
+			return null
+		}
+		return entry
 	},
 })
 
@@ -323,12 +503,10 @@ export const startRematch = mutation({
 			match.player2UserId === viewer._id
 		if (!isPlayer) throw new Error('Not a player in this match')
 
-		// Rematch already created — return it
 		if (match.rematchMatchId) {
 			return { matchId: match.rematchMatchId }
 		}
 
-		// Create new match swapping sides
 		const initialState = createInitialGameState(match.rows, match.cols)
 		const now = Date.now()
 		const newMatchId = await ctx.db.insert('matches', {
@@ -350,6 +528,14 @@ export const startRematch = mutation({
 			startedAt: now,
 			lastMoveAt: now,
 		})
+
+		await scheduleTurnTimeout(ctx, {
+			matchId: newMatchId,
+			expectedTurnNumber: initialState.turnNumber,
+			expectedCurrentPlayer: initialState.currentPlayer,
+			expectedLastMoveAt: now,
+		})
+
 		await ctx.db.patch(match._id, { rematchMatchId: newMatchId })
 		return { matchId: newMatchId }
 	},
@@ -380,6 +566,19 @@ export const getMatch = query({
 	},
 })
 
+export const resolveTurnTimeout = internalMutation({
+	args: {
+		matchId: v.id('matches'),
+		expectedTurnNumber: v.number(),
+		expectedCurrentPlayer: v.union(v.literal('p1'), v.literal('p2')),
+		expectedLastMoveAt: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const match = await ctx.db.get(args.matchId)
+		return await resolveTurnTimeoutIfNeeded(ctx, match, args)
+	},
+})
+
 export const claimTurnTimeout = mutation({
 	args: {
 		matchId: v.id('matches'),
@@ -400,8 +599,7 @@ export const claimTurnTimeout = mutation({
 			match.player2UserId === viewer._id
 		if (!isPlayer) throw new Error('Not part of this match')
 
-		const timedOut = await timeoutMatchIfTurnExpired(ctx, match)
-		return { timedOut }
+		return await resolveTurnTimeoutIfNeeded(ctx, match)
 	},
 })
 
@@ -431,48 +629,22 @@ export const submitMove = mutation({
 		if (match.player2UserId === viewer._id) playerId = 'p2'
 		if (!playerId) throw new Error('Not part of this match')
 
-		const turnTimedOut = await timeoutMatchIfTurnExpired(ctx, match)
-		if (turnTimedOut) throw new Error('Turn timed out')
+		const turnTimedOut = await resolveTurnTimeoutIfNeeded(ctx, match)
+		if (turnTimedOut.timedOut) throw new Error('Turn timed out')
 
 		if (match.currentPlayer !== playerId) throw new Error('Not your turn')
 
-		const state: GameState = {
-			board: match.board,
-			rows: match.rows,
-			cols: match.cols,
-			currentPlayer: match.currentPlayer,
-			turnNumber: match.turnNumber,
-			hasPlayed: match.hasPlayed,
-			eliminated: match.eliminated,
-			winner: match.winner,
-			phase: match.phase === 'gameOver' ? 'gameOver' : 'idle',
-		}
-
+		const state = toGameState(match)
 		const result = applyMove(state, args.row, args.col)
 		const now = Date.now()
 
-		await ctx.db.patch(match._id, {
-			board: result.state.board,
-			currentPlayer: result.state.currentPlayer,
-			turnNumber: result.state.turnNumber,
-			hasPlayed: result.state.hasPlayed,
-			eliminated: result.state.eliminated,
-			winner: result.state.winner,
-			phase: result.state.phase,
-			lastMoveEvents: result.events,
-			lastMoveAt: now,
-			endedAt: result.state.winner ? now : undefined,
-		})
-
-		await ctx.db.insert('matchMoves', {
-			matchId: match._id,
-			turnNumber: result.state.turnNumber,
-			userId: viewer._id,
+		await persistResolvedMove(ctx, match, {
 			playerId,
+			userId: viewer._id,
 			row: args.row,
 			col: args.col,
-			events: result.events,
-			createdAt: now,
+			now,
+			result,
 		})
 
 		return {

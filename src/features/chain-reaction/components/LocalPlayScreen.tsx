@@ -26,6 +26,7 @@ export default function LocalPlayScreen() {
 		activeExplosionKeys,
 		activeCaptureKeys,
 		activeExplosions,
+		lastMove,
 	} = useChainReactionGame(rows, cols);
 
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +94,7 @@ export default function LocalPlayScreen() {
 			<div className="relative w-full max-w-lg mx-auto shrink-0">
 				<GameHud
 					state={state}
+					lastMove={lastMove}
 					onReset={reset}
 					onSettingsOpen={() => setSettingsOpen(true)}
 				/>
@@ -111,6 +113,7 @@ export default function LocalPlayScreen() {
 						activeCaptureKeys={activeCaptureKeys}
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
+						lastMove={lastMove}
 						onPlay={(row, col) => handleMove({ row, col })}
 					/>
 					<GameOverlay state={state} onReset={reset} />
