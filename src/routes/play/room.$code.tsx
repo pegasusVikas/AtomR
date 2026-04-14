@@ -1,9 +1,9 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { api } from "../../../convex/_generated/api";
 import { authClient } from "#/lib/auth-client";
 import { requireSessionFn } from "#/lib/session-fns";
+import { api } from "../../../convex/_generated/api";
 
 export const Route = createFileRoute("/play/room/$code")({
 	beforeLoad: async () => {
@@ -33,9 +33,9 @@ function JoinRoomPage() {
 		setIsJoining(true);
 		try {
 			const result = await joinPrivateRoom({
-				authUserId: session!.user.id,
-				displayName: session!.user.name || session!.user.email || "Player",
-				email: session!.user.email,
+				authUserId: session.user.id,
+				displayName: session.user.name || session.user.email || "Player",
+				email: session.user.email,
 				code,
 			});
 			if (result.matchId) {
@@ -93,7 +93,7 @@ function JoinRoomPage() {
 								Board Size
 							</p>
 							<p className="mt-1 font-mono text-2xl">
-								{room!.rows}×{room!.cols}
+								{room?.rows}×{room?.cols}
 							</p>
 						</div>
 

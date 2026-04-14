@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
-import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";
+import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import ChainReactionBoard from "./ChainReactionBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";

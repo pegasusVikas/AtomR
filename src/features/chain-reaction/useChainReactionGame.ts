@@ -47,15 +47,6 @@ function cloneBoard(board: Board): Board {
 	return board.map((row) => row.map((cell) => ({ ...cell })));
 }
 
-function getNeighbors(row: number, col: number, rows: number, cols: number) {
-	const neighbors: Position[] = [];
-	if (row > 0) neighbors.push({ row: row - 1, col });
-	if (col < cols - 1) neighbors.push({ row, col: col + 1 });
-	if (row < rows - 1) neighbors.push({ row: row + 1, col });
-	if (col > 0) neighbors.push({ row, col: col - 1 });
-	return neighbors;
-}
-
 export type ActiveExplosion = {
 	row: number;
 	col: number;

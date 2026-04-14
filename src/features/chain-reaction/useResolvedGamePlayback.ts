@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createInitialGameState, getCapacity } from "./engine";
+import { getCapacity } from "./engine";
 import type {
 	Board,
 	GameState,

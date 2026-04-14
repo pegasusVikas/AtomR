@@ -14,11 +14,6 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TalksIndexRouteImport } from './routes/talks.index'
-import { Route as SpeakersIndexRouteImport } from './routes/speakers.index'
-import { Route as ScheduleIndexRouteImport } from './routes/schedule.index'
-import { Route as TalksSlugRouteImport } from './routes/talks.$slug'
-import { Route as SpeakersSlugRouteImport } from './routes/speakers.$slug'
 import { Route as PlayOnlineRouteImport } from './routes/play/online'
 import { Route as PlayLocalRouteImport } from './routes/play/local'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
@@ -26,7 +21,6 @@ import { Route as DemoStorybookRouteImport } from './routes/demo/storybook'
 import { Route as DemoPosthogRouteImport } from './routes/demo/posthog'
 import { Route as DemoConvexRouteImport } from './routes/demo/convex'
 import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
-import { Route as ApiRemyChatRouteImport } from './routes/api.remy-chat'
 import { Route as PlayRoomCodeRouteImport } from './routes/play/room.$code'
 import { Route as PlayMatchMatchIdRouteImport } from './routes/play/match.$matchId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -54,31 +48,6 @@ const AboutRoute = AboutRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TalksIndexRoute = TalksIndexRouteImport.update({
-  id: '/talks/',
-  path: '/talks/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpeakersIndexRoute = SpeakersIndexRouteImport.update({
-  id: '/speakers/',
-  path: '/speakers/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScheduleIndexRoute = ScheduleIndexRouteImport.update({
-  id: '/schedule/',
-  path: '/schedule/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TalksSlugRoute = TalksSlugRouteImport.update({
-  id: '/talks/$slug',
-  path: '/talks/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpeakersSlugRoute = SpeakersSlugRouteImport.update({
-  id: '/speakers/$slug',
-  path: '/speakers/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlayOnlineRoute = PlayOnlineRouteImport.update({
@@ -116,11 +85,6 @@ const DemoBetterAuthRoute = DemoBetterAuthRouteImport.update({
   path: '/demo/better-auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRemyChatRoute = ApiRemyChatRouteImport.update({
-  id: '/api/remy-chat',
-  path: '/api/remy-chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlayRoomCodeRoute = PlayRoomCodeRouteImport.update({
   id: '/room/$code',
   path: '/room/$code',
@@ -143,7 +107,6 @@ export interface FileRoutesByFullPath {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/api/remy-chat': typeof ApiRemyChatRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/posthog': typeof DemoPosthogRoute
@@ -151,11 +114,6 @@ export interface FileRoutesByFullPath {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
-  '/speakers/$slug': typeof SpeakersSlugRoute
-  '/talks/$slug': typeof TalksSlugRoute
-  '/schedule/': typeof ScheduleIndexRoute
-  '/speakers/': typeof SpeakersIndexRoute
-  '/talks/': typeof TalksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -166,7 +124,6 @@ export interface FileRoutesByTo {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/api/remy-chat': typeof ApiRemyChatRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/posthog': typeof DemoPosthogRoute
@@ -174,11 +131,6 @@ export interface FileRoutesByTo {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
-  '/speakers/$slug': typeof SpeakersSlugRoute
-  '/talks/$slug': typeof TalksSlugRoute
-  '/schedule': typeof ScheduleIndexRoute
-  '/speakers': typeof SpeakersIndexRoute
-  '/talks': typeof TalksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -190,7 +142,6 @@ export interface FileRoutesById {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/api/remy-chat': typeof ApiRemyChatRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/posthog': typeof DemoPosthogRoute
@@ -198,11 +149,6 @@ export interface FileRoutesById {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
-  '/speakers/$slug': typeof SpeakersSlugRoute
-  '/talks/$slug': typeof TalksSlugRoute
-  '/schedule/': typeof ScheduleIndexRoute
-  '/speakers/': typeof SpeakersIndexRoute
-  '/talks/': typeof TalksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -215,7 +161,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/api/remy-chat'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/posthog'
@@ -223,11 +168,6 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/play/local'
     | '/play/online'
-    | '/speakers/$slug'
-    | '/talks/$slug'
-    | '/schedule/'
-    | '/speakers/'
-    | '/talks/'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -238,7 +178,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/api/remy-chat'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/posthog'
@@ -246,11 +185,6 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/play/local'
     | '/play/online'
-    | '/speakers/$slug'
-    | '/talks/$slug'
-    | '/schedule'
-    | '/speakers'
-    | '/talks'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -261,7 +195,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/api/remy-chat'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/posthog'
@@ -269,11 +202,6 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/play/local'
     | '/play/online'
-    | '/speakers/$slug'
-    | '/talks/$slug'
-    | '/schedule/'
-    | '/speakers/'
-    | '/talks/'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -285,17 +213,11 @@ export interface RootRouteChildren {
   PlayRoute: typeof PlayRouteWithChildren
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
-  ApiRemyChatRoute: typeof ApiRemyChatRoute
   DemoBetterAuthRoute: typeof DemoBetterAuthRoute
   DemoConvexRoute: typeof DemoConvexRoute
   DemoPosthogRoute: typeof DemoPosthogRoute
   DemoStorybookRoute: typeof DemoStorybookRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
-  SpeakersSlugRoute: typeof SpeakersSlugRoute
-  TalksSlugRoute: typeof TalksSlugRoute
-  ScheduleIndexRoute: typeof ScheduleIndexRoute
-  SpeakersIndexRoute: typeof SpeakersIndexRoute
-  TalksIndexRoute: typeof TalksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -334,41 +256,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/talks/': {
-      id: '/talks/'
-      path: '/talks'
-      fullPath: '/talks/'
-      preLoaderRoute: typeof TalksIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/speakers/': {
-      id: '/speakers/'
-      path: '/speakers'
-      fullPath: '/speakers/'
-      preLoaderRoute: typeof SpeakersIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/schedule/': {
-      id: '/schedule/'
-      path: '/schedule'
-      fullPath: '/schedule/'
-      preLoaderRoute: typeof ScheduleIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/talks/$slug': {
-      id: '/talks/$slug'
-      path: '/talks/$slug'
-      fullPath: '/talks/$slug'
-      preLoaderRoute: typeof TalksSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/speakers/$slug': {
-      id: '/speakers/$slug'
-      path: '/speakers/$slug'
-      fullPath: '/speakers/$slug'
-      preLoaderRoute: typeof SpeakersSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/play/online': {
@@ -420,13 +307,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoBetterAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/remy-chat': {
-      id: '/api/remy-chat'
-      path: '/api/remy-chat'
-      fullPath: '/api/remy-chat'
-      preLoaderRoute: typeof ApiRemyChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/play/room/$code': {
       id: '/play/room/$code'
       path: '/room/$code'
@@ -473,17 +353,11 @@ const rootRouteChildren: RootRouteChildren = {
   PlayRoute: PlayRouteWithChildren,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
-  ApiRemyChatRoute: ApiRemyChatRoute,
   DemoBetterAuthRoute: DemoBetterAuthRoute,
   DemoConvexRoute: DemoConvexRoute,
   DemoPosthogRoute: DemoPosthogRoute,
   DemoStorybookRoute: DemoStorybookRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
-  SpeakersSlugRoute: SpeakersSlugRoute,
-  TalksSlugRoute: TalksSlugRoute,
-  ScheduleIndexRoute: ScheduleIndexRoute,
-  SpeakersIndexRoute: SpeakersIndexRoute,
-  TalksIndexRoute: TalksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

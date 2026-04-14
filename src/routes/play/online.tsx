@@ -1,9 +1,9 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { api } from "../../../convex/_generated/api";
 import { authClient } from "#/lib/auth-client";
 import { requireSessionFn } from "#/lib/session-fns";
+import { api } from "../../../convex/_generated/api";
 
 export const Route = createFileRoute("/play/online")({
 	beforeLoad: async () => {
@@ -221,12 +221,13 @@ function OnlineLobbyPage() {
 										<button
 											type="button"
 											className="mt-4 rounded-full bg-[oklch(0.72_0.19_23)] px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#07070b]"
-											onClick={() =>
+											onClick={() => {
+												if (!room.matchId) return;
 												void navigate({
 													to: "/play/match/$matchId",
-													params: { matchId: room.matchId! },
-												})
-											}
+													params: { matchId: room.matchId },
+												});
+											}}
 										>
 											Open Match
 										</button>

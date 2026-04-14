@@ -1,8 +1,8 @@
 import {
+	createPlayerFlags,
 	DEFAULT_COLS,
 	DEFAULT_ROWS,
 	PLAYER_ORDER,
-	createPlayerFlags,
 	type PlayerId,
 } from "./shared";
 

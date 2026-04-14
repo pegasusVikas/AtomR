@@ -1,3 +1,6 @@
+import type { Board } from "./shared";
+import { getCapacity } from "./shared-engine";
+
 export {
 	allPlayersHavePlayed,
 	applyMove,

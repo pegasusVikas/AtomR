@@ -1,20 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
 import ChainReactionBoard from "#/features/chain-reaction/components/ChainReactionBoard";
 import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import {
-	ONLINE_TURN_TIME_LIMIT_MS,
 	type Board,
+	ONLINE_TURN_TIME_LIMIT_MS,
 	type PlayerId,
 } from "#/features/chain-reaction/shared";
-import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import { useResolvedGamePlayback } from "#/features/chain-reaction/useResolvedGamePlayback";
+import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import { authClient } from "#/lib/auth-client";
 import { requireSessionFn } from "#/lib/session-fns";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 function cloneBoard(board: Board): Board {
 	return board.map((row) => row.map((cell) => ({ ...cell })));
