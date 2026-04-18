@@ -1,4 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { useEffect } from "react";
+import { authClient } from "#/lib/auth-client";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
@@ -87,6 +91,42 @@ const GAME_MODES = [
 const F = "'Oxanium', 'Segoe UI', sans-serif";
 
 function HomePage() {
+	const navigate = useNavigate();
+	const { data: session } = authClient.useSession();
+	const activeMatch = useQuery(
+		api.online.getMyActiveMatch,
+		session?.user ? { authUserId: session.user.id } : "skip",
+	);
+
+	useEffect(() => {
+		if (!activeMatch?.matchId) return;
+		void navigate({
+			to: "/play/match/$matchId",
+			params: { matchId: activeMatch.matchId },
+			replace: true,
+		});
+	}, [activeMatch?.matchId, navigate]);
+
+	if (activeMatch?.matchId) {
+		return (
+			<main
+				style={{
+					background: "#07070b",
+					minHeight: "100dvh",
+					display: "grid",
+					placeItems: "center",
+					fontFamily: F,
+					color: "rgba(255,255,255,0.68)",
+					letterSpacing: "0.2em",
+					textTransform: "uppercase",
+					fontSize: 12,
+				}}
+			>
+				Rejoining active match…
+			</main>
+		);
+	}
+
 	return (
 		<main
 			style={{

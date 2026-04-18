@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
+import { Flag, Home } from "lucide-react";
 import {
 	useEffect,
 	useEffectEvent,
@@ -13,7 +14,6 @@ import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import {
 	type Board,
-	formatBoardCoordinate,
 	type LastMove,
 	ONLINE_TURN_TIME_LIMIT_MS,
 	ONLINE_VIEWER_HEARTBEAT_MS,
@@ -48,7 +48,9 @@ function MatchPage() {
 	const claimTurnTimeout = useMutation(api.online.claimTurnTimeout);
 	const submitMove = useMutation(api.online.submitMove);
 	const startRematch = useMutation(api.online.startRematch);
+	const resignMatch = useMutation(api.online.resignMatch);
 	const [rematchPending, setRematchPending] = useState(false);
+	const [resignPending, setResignPending] = useState(false);
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeoutClaimedForRef = useRef<string | null>(null);
@@ -275,6 +277,18 @@ function MatchPage() {
 		? PLAYER_COLORS[matchState.winner]
 		: PLAYER_COLORS[matchState.currentPlayer];
 	const secondsRemaining = Math.max(0, Math.ceil(msRemaining / 1000));
+	const viewerName =
+		viewerPlayerId === "p1"
+			? (match.player1?.displayName ?? "You")
+			: viewerPlayerId === "p2"
+				? (match.player2?.displayName ?? "You")
+				: "You";
+	const opponentName =
+		viewerPlayerId === "p1"
+			? (match.player2?.displayName ?? "Opponent")
+			: viewerPlayerId === "p2"
+				? (match.player1?.displayName ?? "Opponent")
+				: "Opponent";
 	const winnerName =
 		matchState.winner === "p1"
 			? (match.player1?.displayName ?? "Player 1")
@@ -282,12 +296,10 @@ function MatchPage() {
 				? (match.player2?.displayName ?? "Player 2")
 				: null;
 	const turnStatus = matchState.winner
-		? match.phase === "abandoned"
-			? `${winnerName} wins on time.`
-			: `${winnerName} wins.`
+		? `${winnerName} wins`
 		: matchState.currentPlayer === viewerPlayerId
-			? `Your turn · ${secondsRemaining}s left`
-			: `Opponent turn · ${secondsRemaining}s left`;
+			? "Your move"
+			: "Opponent turn";
 	const boardStyle: React.CSSProperties = boardDims
 		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
 		: { width: "100%", height: "100%" };
@@ -329,40 +341,113 @@ function MatchPage() {
 			className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#07070b] px-3 pt-5 pb-4 text-white"
 			style={{ fontFamily: "'Oxanium', 'Segoe UI', sans-serif" }}
 		>
-			<div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 rounded-3xl border border-white/8 bg-white/[0.03] px-5 py-4">
-				<div>
-					<p className="text-[10px] uppercase tracking-[0.3em] text-white/35">
-						Match
-					</p>
-					<h1 className="mt-2 text-xl font-semibold">
-						{match.player1?.displayName} vs {match.player2?.displayName}
-					</h1>
-					<p className="mt-1 text-sm text-white/55">
-						You are {viewerPlayerId?.toUpperCase()}. {turnStatus}
-					</p>
-					<p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">
-						{lastMove
-							? `Last move ${lastMove.player.toUpperCase()} ${formatBoardCoordinate(lastMove.row, lastMove.col)}`
-							: "Last move --"}
-					</p>
+			<div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 rounded-[30px] bg-white/[0.025] px-3 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+				<button
+					type="button"
+					className="inline-flex h-12 items-center gap-2 rounded-full bg-white/[0.04] px-4 text-[11px] font-semibold uppercase tracking-[0.26em] text-white/72 transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98]"
+					onClick={() => {
+						void navigate({ to: "/" });
+					}}
+				>
+					<Home size={16} strokeWidth={1.75} />
+					<span className="max-[640px]:hidden">Home</span>
+				</button>
+
+				<div className="min-w-0 flex-1 rounded-[26px] bg-white/[0.03] px-4 py-3">
+					<div className="flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start">
+						<div className="min-w-0">
+							<div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/38">
+								<span>{turnStatus}</span>
+								<span className="text-white/18">•</span>
+								<span>
+									{matchState.winner ? "finished" : `${secondsRemaining}s`}
+								</span>
+							</div>
+							<div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-semibold text-white max-[640px]:text-[13px]">
+								<span className="truncate">{viewerName}</span>
+								<span className="text-white/28">vs</span>
+								<span className="truncate text-white/72">{opponentName}</span>
+							</div>
+						</div>
+
+						<div className="flex items-center gap-2 self-stretch max-[640px]:w-full">
+							<div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+								{(
+									[
+										{
+											id: "left",
+											color:
+												matchState.currentPlayer === "p1"
+													? PLAYER_COLORS.p2
+													: PLAYER_COLORS.p1,
+										},
+										{ id: "center", color: activeColor },
+										{
+											id: "right",
+											color:
+												matchState.currentPlayer === "p1"
+													? PLAYER_COLORS.p2
+													: PLAYER_COLORS.p1,
+										},
+									] as const
+								).map(({ id, color }, index) => (
+									<div
+										key={id}
+										className="flex h-12 items-center justify-center rounded-[22px] bg-white/[0.028] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+									>
+										<span
+											className="block h-5 w-5 rounded-full"
+											style={{
+												background: color,
+												boxShadow: `0 0 24px ${color}55`,
+												opacity: index === 1 ? 1 : 0.72,
+												transform: index === 1 ? "scale(1)" : "scale(0.86)",
+											}}
+										/>
+									</div>
+								))}
+							</div>
+							<div
+								className={`flex h-12 min-w-[76px] items-center justify-center rounded-[22px] bg-white/[0.04] px-4 text-lg font-semibold tracking-[-0.03em] ${
+									!matchState.winner && secondsRemaining <= 5
+										? "text-[#ff847d]"
+										: "text-white/86"
+								}`}
+							>
+								{matchState.winner ? "--" : `${secondsRemaining}s`}
+							</div>
+						</div>
+					</div>
 				</div>
-				<div className="text-right">
-					<p className="text-[10px] uppercase tracking-[0.3em] text-white/35">
-						Turn clock
-					</p>
-					<p
-						className={`mt-2 font-mono text-lg ${
-							!matchState.winner && secondsRemaining <= 5
-								? "text-[#ff847d]"
-								: "text-white"
-						}`}
+
+				{!matchState.winner ? (
+					<button
+						type="button"
+						disabled={resignPending}
+						className="inline-flex h-12 items-center gap-2 rounded-full bg-[rgba(224,92,58,0.12)] px-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,159,134,0.92)] transition hover:bg-[rgba(224,92,58,0.18)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+						onClick={async () => {
+							if (
+								!window.confirm(
+									"Resign this match? This immediately gives the win to your opponent.",
+								)
+							) {
+								return;
+							}
+							setResignPending(true);
+							try {
+								await resignMatch({
+									matchId: match._id,
+									authUserId: session.user.id,
+								});
+							} finally {
+								setResignPending(false);
+							}
+						}}
 					>
-						{matchState.winner ? "--" : `${secondsRemaining}s`}
-					</p>
-					<p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/40">
-						board {match.rows}×{match.cols}
-					</p>
-				</div>
+						<Flag size={16} strokeWidth={1.75} />
+						<span>{resignPending ? "Resigning…" : "Resign"}</span>
+					</button>
+				) : null}
 			</div>
 
 			<div

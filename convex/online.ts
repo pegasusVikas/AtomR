@@ -640,6 +640,38 @@ export const getMatch = query({
 	},
 })
 
+export const getMyActiveMatch = query({
+	args: { authUserId: v.string() },
+	handler: async (ctx, args) => {
+		const viewer = await ctx.db
+			.query('users')
+			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
+			.unique()
+		if (!viewer) return null
+
+		const [playerOneMatches, playerTwoMatches] = await Promise.all([
+			ctx.db
+				.query('matches')
+				.withIndex('by_player1_user_id', (q) => q.eq('player1UserId', viewer._id))
+				.collect(),
+			ctx.db
+				.query('matches')
+				.withIndex('by_player2_user_id', (q) => q.eq('player2UserId', viewer._id))
+				.collect(),
+		])
+
+		const activeMatch = [...playerOneMatches, ...playerTwoMatches]
+			.filter((match) => !match.winner && match.phase !== 'gameOver')
+			.sort((a, b) => {
+				const aActivityAt = Math.max(a.lastMoveAt ?? 0, a.startedAt ?? 0, a.createdAt)
+				const bActivityAt = Math.max(b.lastMoveAt ?? 0, b.startedAt ?? 0, b.createdAt)
+				return bActivityAt - aActivityAt
+			})[0]
+
+		return activeMatch ? { matchId: activeMatch._id } : null
+	},
+})
+
 export const resolveTurnTimeout = internalMutation({
 	args: {
 		matchId: v.id('matches'),
@@ -725,5 +757,43 @@ export const submitMove = mutation({
 			state: result.state,
 			events: result.events,
 		}
+	},
+})
+
+export const resignMatch = mutation({
+	args: {
+		matchId: v.id('matches'),
+		authUserId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const viewer = await ctx.db
+			.query('users')
+			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
+			.unique()
+		if (!viewer) throw new Error('User not found')
+
+		const match = await ctx.db.get(args.matchId)
+		if (!match) throw new Error('Match not found')
+		if (match.winner || match.phase === 'gameOver') {
+			return { winner: match.winner }
+		}
+
+		let resigningPlayer: PlayerId | null = null
+		if (match.player1UserId === viewer._id) resigningPlayer = 'p1'
+		if (match.player2UserId === viewer._id) resigningPlayer = 'p2'
+		if (!resigningPlayer) throw new Error('Not part of this match')
+
+		const winner = getOpponentPlayer(resigningPlayer)
+		const now = Date.now()
+
+		await ctx.db.patch(match._id, {
+			winner,
+			phase: 'gameOver',
+			endedAt: now,
+			lastMoveAt: now,
+			lastMoveEvents: [],
+		})
+
+		return { winner }
 	},
 })
