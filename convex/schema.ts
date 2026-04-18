@@ -17,12 +17,12 @@ const nullablePlayerId = v.union(playerId, v.null())
 const playerFlags = v.object({
 	p1: v.boolean(),
 	p2: v.boolean(),
-	p3: v.boolean(),
-	p4: v.boolean(),
-	p5: v.boolean(),
-	p6: v.boolean(),
-	p7: v.boolean(),
-	p8: v.boolean(),
+	p3: v.optional(v.boolean()),
+	p4: v.optional(v.boolean()),
+	p5: v.optional(v.boolean()),
+	p6: v.optional(v.boolean()),
+	p7: v.optional(v.boolean()),
+	p8: v.optional(v.boolean()),
 })
 
 export default defineSchema({
@@ -71,7 +71,7 @@ export default defineSchema({
 		player2UserId: v.id('users'),
 		rows: v.number(),
 		cols: v.number(),
-		playerCount: v.number(),
+		playerCount: v.optional(v.number()),
 		board: v.array(
 			v.array(
 				v.object({
