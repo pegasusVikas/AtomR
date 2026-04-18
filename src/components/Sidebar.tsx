@@ -129,26 +129,28 @@ export default function Sidebar() {
 					{isPending ? (
 						<div className="h-14 rounded-[18px] bg-white/[0.04]" />
 					) : session?.user ? (
-						<div className="flex items-center gap-3 rounded-[20px] bg-white/[0.025] px-3 py-3">
-							<div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-white/[0.05]">
-								{session.user.image ? (
-									<img
-										src={session.user.image}
-										alt={session.user.name ?? "User"}
-										className="h-full w-full object-cover"
-									/>
-								) : (
-									<span className="text-base font-semibold text-white/72">
-										{session.user.name?.charAt(0).toUpperCase() ?? "U"}
-									</span>
-								)}
-							</div>
-							<div className="min-w-0 flex-1">
-								<div className="truncate text-[14px] font-semibold text-white/92">
-									{session.user.name || session.user.email?.split("@")[0]}
+						<div className="rounded-[20px] bg-white/[0.025] px-3 py-3">
+							<div className="flex min-w-0 items-center gap-3">
+								<div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-white/[0.05]">
+									{session.user.image ? (
+										<img
+											src={session.user.image}
+											alt={session.user.name ?? "User"}
+											className="h-full w-full object-cover"
+										/>
+									) : (
+										<span className="text-base font-semibold text-white/72">
+											{session.user.name?.charAt(0).toUpperCase() ?? "U"}
+										</span>
+									)}
 								</div>
-								<div className="truncate text-[11px] text-white/34">
-									{session.user.email}
+								<div className="min-w-0 flex-1">
+									<div className="truncate text-[14px] font-semibold text-white/92">
+										{session.user.name || session.user.email?.split("@")[0]}
+									</div>
+									<div className="truncate text-[11px] text-white/34 max-[420px]:hidden">
+										{session.user.email}
+									</div>
 								</div>
 							</div>
 							<button
@@ -162,7 +164,7 @@ export default function Sidebar() {
 									});
 									window.location.href = "/";
 								}}
-								className="inline-flex h-10 items-center justify-center rounded-[16px] bg-white/[0.045] px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/56 transition hover:bg-white/[0.08] hover:text-white/84 active:scale-[0.98]"
+								className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-[16px] bg-white/[0.045] px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/56 transition hover:bg-white/[0.08] hover:text-white/84 active:scale-[0.98] min-[961px]:mt-0 min-[961px]:w-auto"
 							>
 								Sign Out
 							</button>
