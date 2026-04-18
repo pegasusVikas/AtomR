@@ -612,6 +612,35 @@ export const getMyActiveMatch = query({
 	},
 })
 
+export const cleanupLegacyRematchFields = mutation({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+		const matches = await ctx.db.query('matches').collect()
+		let cleaned = 0
+
+		for (const match of matches) {
+			if (cleaned >= limit) break
+			if (match.rematchMatchId === undefined) continue
+
+			const {
+				_creationTime,
+				_id,
+				rematchMatchId,
+				...replacement
+			} = match
+			void _creationTime
+			void rematchMatchId
+			await ctx.db.replace(_id, replacement)
+			cleaned += 1
+		}
+
+		return { cleaned }
+	},
+})
+
 export const resolveTurnTimeout = internalMutation({
 	args: {
 		matchId: v.id('matches'),

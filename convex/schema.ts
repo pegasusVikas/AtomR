@@ -122,6 +122,7 @@ export default defineSchema({
 		startedAt: v.number(),
 		endedAt: v.optional(v.number()),
 		lastMoveAt: v.number(),
+		rematchMatchId: v.optional(v.id('matches')),
 	})
 		.index('by_player1_user_id', ['player1UserId'])
 		.index('by_player2_user_id', ['player2UserId'])
