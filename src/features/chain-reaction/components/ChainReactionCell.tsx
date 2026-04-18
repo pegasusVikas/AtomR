@@ -1,5 +1,5 @@
 import { PLAYER_COLORS } from "../constants";
-import { getCellCapacity, isCellCritical } from "../selectors";
+import { isCellCritical } from "../selectors";
 import type { Cell, GameState, PlayerId, Position } from "../types";
 
 type ChainReactionCellProps = {
@@ -105,7 +105,6 @@ export default function ChainReactionCell({
 	const suggestionColor = suggestedPlayer
 		? PLAYER_COLORS[suggestedPlayer]
 		: null;
-	const capacity = getCellCapacity(state, position.row, position.col);
 	const critical = isCellCritical(state, cell, position.row, position.col);
 	const disabled = !isLegal || isAnimating;
 
@@ -200,23 +199,6 @@ export default function ChainReactionCell({
 						isCritical={critical}
 					/>
 				)}
-
-				{/* Count / capacity — bottom right, monospace tiny */}
-				{cell.count > 0 && (
-					<span
-						className="absolute bottom-[5%] right-[7%] leading-none pointer-events-none select-none"
-						style={{
-							fontFamily: "'JetBrains Mono', monospace",
-							fontSize: "clamp(6px, 1.4vw, 9px)",
-							color: ownerColor
-								? `color-mix(in srgb, ${ownerColor} 60%, rgba(255,255,255,0.2))`
-								: "rgba(255,255,255,0.25)",
-						}}
-					>
-						{cell.count}/{capacity}
-					</span>
-				)}
-
 				{/* Hover glow overlay — legal, non-animating only */}
 				{!disabled && (
 					<span
