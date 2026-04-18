@@ -101,4 +101,41 @@ describe("chooseCpuMove", () => {
 		expect(move).not.toBeNull();
 		expect(legalMoves).toContainEqual(move);
 	});
+
+	it("returns a legal move for a multiplayer state", () => {
+		const state: GameState = {
+			board: [
+				[
+					{ owner: "p1", count: 1 },
+					{ owner: null, count: 0 },
+					{ owner: "p2", count: 1 },
+				],
+				[
+					{ owner: null, count: 0 },
+					{ owner: "p3", count: 2 },
+					{ owner: "p4", count: 1 },
+				],
+				[
+					{ owner: null, count: 0 },
+					{ owner: "p3", count: 1 },
+					{ owner: null, count: 0 },
+				],
+			],
+			rows: 3,
+			cols: 3,
+			playerCount: 4,
+			currentPlayer: "p3",
+			turnNumber: 9,
+			hasPlayed: { p1: true, p2: true, p3: true, p4: true },
+			eliminated: { p1: false, p2: false, p3: false, p4: false },
+			winner: null,
+			phase: "idle",
+		};
+
+		const move = chooseCpuMove(state, 8, () => 0.5);
+		const legalMoves = getLegalMoves(state);
+
+		expect(move).not.toBeNull();
+		expect(legalMoves).toContainEqual(move);
+	});
 });

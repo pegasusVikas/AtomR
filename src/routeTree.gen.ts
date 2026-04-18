@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayTrainingRouteImport } from './routes/play/training'
 import { Route as PlayOnlineRouteImport } from './routes/play/online'
 import { Route as PlayLocalRouteImport } from './routes/play/local'
+import { Route as PlayAiBattleRouteImport } from './routes/play/ai-battle'
 import { Route as PlayAiRouteImport } from './routes/play/ai'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoStorybookRouteImport } from './routes/demo/storybook'
@@ -65,6 +66,11 @@ const PlayOnlineRoute = PlayOnlineRouteImport.update({
 const PlayLocalRoute = PlayLocalRouteImport.update({
   id: '/local',
   path: '/local',
+  getParentRoute: () => PlayRoute,
+} as any)
+const PlayAiBattleRoute = PlayAiBattleRouteImport.update({
+  id: '/ai-battle',
+  path: '/ai-battle',
   getParentRoute: () => PlayRoute,
 } as any)
 const PlayAiRoute = PlayAiRouteImport.update({
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
+  '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
   '/play/training': typeof PlayTrainingRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
+  '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
   '/play/training': typeof PlayTrainingRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
+  '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
   '/play/training': typeof PlayTrainingRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/demo/storybook'
     | '/demo/tanstack-query'
     | '/play/ai'
+    | '/play/ai-battle'
     | '/play/local'
     | '/play/online'
     | '/play/training'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/demo/storybook'
     | '/demo/tanstack-query'
     | '/play/ai'
+    | '/play/ai-battle'
     | '/play/local'
     | '/play/online'
     | '/play/training'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/demo/storybook'
     | '/demo/tanstack-query'
     | '/play/ai'
+    | '/play/ai-battle'
     | '/play/local'
     | '/play/online'
     | '/play/training'
@@ -303,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayLocalRouteImport
       parentRoute: typeof PlayRoute
     }
+    '/play/ai-battle': {
+      id: '/play/ai-battle'
+      path: '/ai-battle'
+      fullPath: '/play/ai-battle'
+      preLoaderRoute: typeof PlayAiBattleRouteImport
+      parentRoute: typeof PlayRoute
+    }
     '/play/ai': {
       id: '/play/ai'
       path: '/ai'
@@ -371,6 +390,7 @@ declare module '@tanstack/react-router' {
 
 interface PlayRouteChildren {
   PlayAiRoute: typeof PlayAiRoute
+  PlayAiBattleRoute: typeof PlayAiBattleRoute
   PlayLocalRoute: typeof PlayLocalRoute
   PlayOnlineRoute: typeof PlayOnlineRoute
   PlayTrainingRoute: typeof PlayTrainingRoute
@@ -380,6 +400,7 @@ interface PlayRouteChildren {
 
 const PlayRouteChildren: PlayRouteChildren = {
   PlayAiRoute: PlayAiRoute,
+  PlayAiBattleRoute: PlayAiBattleRoute,
   PlayLocalRoute: PlayLocalRoute,
   PlayOnlineRoute: PlayOnlineRoute,
   PlayTrainingRoute: PlayTrainingRoute,

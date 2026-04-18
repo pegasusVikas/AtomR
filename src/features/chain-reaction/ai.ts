@@ -1,4 +1,5 @@
 import { applyMove, getCapacity, getLegalMoves } from "./engine";
+import { getActivePlayerOrder } from "./shared";
 import type { GameState, PlayerId, Position } from "./types";
 
 export type AiConfig = {
@@ -22,10 +23,6 @@ type SearchControl = {
 	deadlineAt?: number;
 };
 
-function opponentOf(player: PlayerId): PlayerId {
-	return player === "p1" ? "p2" : "p1";
-}
-
 function isCorner(row: number, col: number, rows: number, cols: number) {
 	return (row === 0 || row === rows - 1) && (col === 0 || col === cols - 1);
 }
@@ -37,10 +34,10 @@ function isEdge(row: number, col: number, rows: number, cols: number) {
 function evaluateState(state: GameState, perspective: PlayerId): number {
 	if (state.isDraw) return 0;
 	if (state.winner === perspective) return 1_000_000;
-	if (state.winner === opponentOf(perspective)) return -1_000_000;
+	if (state.winner && state.winner !== perspective) return -1_000_000;
 
 	let total = 0;
-	const opponent = opponentOf(perspective);
+	const activePlayers = getActivePlayerOrder(state.playerCount);
 
 	for (let row = 0; row < state.rows; row += 1) {
 		for (let col = 0; col < state.cols; col += 1) {
@@ -70,7 +67,12 @@ function evaluateState(state: GameState, perspective: PlayerId): number {
 				if (nr < 0 || nc < 0 || nr >= state.rows || nc >= state.cols) continue;
 				const neighbor = state.board[nr][nc];
 				if (!neighbor.owner || neighbor.count === 0) continue;
-				if (neighbor.owner === opponent) total += sign * -5;
+				if (
+					neighbor.owner !== perspective &&
+					activePlayers.includes(neighbor.owner)
+				) {
+					total += sign * -5;
+				}
 			}
 		}
 	}

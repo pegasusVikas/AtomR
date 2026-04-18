@@ -1,0 +1,239 @@
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	chooseCpuMove,
+	configForDifficulty,
+} from "#/features/chain-reaction/ai";
+import {
+	getActivePlayerOrder,
+	PLAYER_COLORS,
+	type PlayerId,
+} from "#/features/chain-reaction/constants";
+import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";
+import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
+import ChainReactionBoard from "./ChainReactionBoard";
+import GameHud from "./GameHud";
+import GameOverlay from "./GameOverlay";
+import GameSettings from "./GameSettings";
+
+function getAiNames(playerCount: number): Partial<Record<PlayerId, string>> {
+	return Object.fromEntries(
+		getActivePlayerOrder(playerCount).map((playerId, index) => [
+			playerId,
+			`CPU ${index + 1}`,
+		]),
+	) as Partial<Record<PlayerId, string>>;
+}
+
+export default function AiBattleScreen() {
+	const [rows, setRows] = useState(6);
+	const [cols, setCols] = useState(9);
+	const [playerCount, setPlayerCount] = useState(4);
+	const [difficulty, setDifficulty] = useState(6);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [isThinking, setIsThinking] = useState(false);
+	const [settingsResetToken, setSettingsResetToken] = useState(0);
+
+	useEffect(() => {
+		const rec = getRecommendedSize();
+		setRows(rec.rows);
+		setCols(rec.cols);
+	}, []);
+
+	const {
+		state,
+		resolvedState,
+		handleMove,
+		reset,
+		isAnimating,
+		activeExplosionKeys,
+		activeCaptureKeys,
+		activeExplosions,
+		lastMove,
+	} = useChainReactionGame(rows, cols, playerCount, settingsResetToken);
+
+	const cpuTimerRef = useRef<number | null>(null);
+
+	const clearCpuTimer = useCallback(() => {
+		if (cpuTimerRef.current !== null) {
+			window.clearTimeout(cpuTimerRef.current);
+			cpuTimerRef.current = null;
+		}
+	}, []);
+
+	useEffect(() => {
+		clearCpuTimer();
+		setIsThinking(false);
+
+		if (
+			resolvedState.phase !== "idle" ||
+			resolvedState.winner ||
+			resolvedState.isDraw
+		) {
+			return;
+		}
+
+		const { thinkDelayMs } = configForDifficulty(difficulty);
+		setIsThinking(true);
+		cpuTimerRef.current = window.setTimeout(() => {
+			const move = chooseCpuMove(resolvedState, difficulty);
+			cpuTimerRef.current = null;
+			setIsThinking(false);
+			if (!move) return;
+			handleMove(move);
+		}, thinkDelayMs);
+
+		return () => {
+			clearCpuTimer();
+		};
+	}, [clearCpuTimer, difficulty, handleMove, resolvedState]);
+
+	useEffect(() => {
+		return () => {
+			clearCpuTimer();
+		};
+	}, [clearCpuTimer]);
+
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
+		null,
+	);
+
+	useLayoutEffect(() => {
+		const element = containerRef.current;
+		if (!element) return;
+
+		function measure(target: HTMLDivElement) {
+			const { width, height } = target.getBoundingClientRect();
+			if (!width || !height) return;
+			const aspect = cols / rows;
+			let w: number;
+			let h: number;
+			if (width / height > aspect) {
+				h = height;
+				w = h * aspect;
+			} else {
+				w = width;
+				h = w / aspect;
+			}
+			setBoardDims({ w, h });
+		}
+
+		measure(element);
+		const obs = new ResizeObserver(() => measure(element));
+		obs.observe(element);
+		return () => obs.disconnect();
+	}, [rows, cols]);
+
+	const cellSize = boardDims ? boardDims.w / cols : 0;
+	const activeColor = state.winner
+		? PLAYER_COLORS[state.winner]
+		: PLAYER_COLORS[state.currentPlayer];
+	const boardStyle: React.CSSProperties = boardDims
+		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
+		: { width: "100%", height: "100%" };
+	const hudStyle: React.CSSProperties = boardDims
+		? { width: `${boardDims.w}px`, maxWidth: "100%" }
+		: { width: "100%", maxWidth: "100%" };
+	const playerNames = useMemo(() => getAiNames(playerCount), [playerCount]);
+	const difficultyLabel = useMemo(() => {
+		if (difficulty <= 2) return "loose";
+		if (difficulty <= 4) return "casual";
+		if (difficulty <= 6) return "sharp";
+		if (difficulty <= 8) return "ruthless";
+		return "nightmare";
+	}, [difficulty]);
+
+	return (
+		<main
+			className="relative flex h-[100dvh] flex-col overflow-hidden px-3 pt-5 pb-4"
+			style={{
+				background: "#07070b",
+				fontFamily: "'Oxanium', 'Segoe UI', sans-serif",
+			}}
+		>
+			<div
+				className="pointer-events-none fixed inset-x-0 top-0 h-[50%]"
+				style={{
+					background: `radial-gradient(ellipse 80% 55% at 50% -5%, ${activeColor}14 0%, transparent 65%)`,
+					transition: "background 1.2s ease",
+				}}
+			/>
+			<div
+				className="pointer-events-none fixed inset-x-0 bottom-0 h-[30%]"
+				style={{
+					background: `radial-gradient(ellipse 60% 40% at 50% 110%, ${activeColor}08 0%, transparent 70%)`,
+					transition: "background 1.2s ease",
+				}}
+			/>
+
+			<div className="relative mx-auto w-full shrink-0" style={hudStyle}>
+				<GameHud state={state} onSettingsOpen={() => setSettingsOpen(true)} />
+			</div>
+
+			<div
+				ref={containerRef}
+				className="relative flex min-h-0 flex-1 items-center justify-center"
+			>
+				<div style={boardStyle} className="relative">
+					<ChainReactionBoard
+						state={state}
+						activeColor={activeColor}
+						isAnimating={isAnimating}
+						activeExplosionKeys={activeExplosionKeys}
+						activeCaptureKeys={activeCaptureKeys}
+						activeExplosions={activeExplosions}
+						cellSize={cellSize}
+						lastMove={lastMove}
+						onPlay={() => {}}
+					/>
+					<GameOverlay
+						state={state}
+						onReset={reset}
+						resetLabel="run again"
+						playerNames={playerNames}
+					/>
+				</div>
+			</div>
+
+			<p
+				className="relative shrink-0 text-center text-[10px] uppercase tracking-[0.3em]"
+				style={{ color: "rgba(255,255,255,0.12)" }}
+			>
+				{isThinking
+					? "ai thinking · autonomous match in progress"
+					: "autonomous match · board, players, and difficulty in settings"}
+			</p>
+
+			<GameSettings
+				open={settingsOpen}
+				rows={rows}
+				cols={cols}
+				playerCount={playerCount}
+				playerCountLocked={false}
+				difficulty={difficulty}
+				difficultyLabel={difficultyLabel}
+				onApply={(newRows, newCols, newDifficulty, newPlayerCount) => {
+					clearCpuTimer();
+					setIsThinking(false);
+					setRows(newRows);
+					setCols(newCols);
+					if (newDifficulty !== undefined) {
+						setDifficulty(newDifficulty);
+					}
+					if (newPlayerCount !== undefined) {
+						setPlayerCount(newPlayerCount);
+					}
+					setSettingsResetToken((token) => token + 1);
+				}}
+				onClose={() => setSettingsOpen(false)}
+			/>
+		</main>
+	);
+}

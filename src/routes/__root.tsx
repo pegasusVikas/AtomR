@@ -48,6 +48,7 @@ function RootLayout() {
 			match.fullPath === "/sign-in" ||
 			match.fullPath === "/sign-up" ||
 			match.fullPath === "/play/ai" ||
+			match.fullPath === "/play/ai-battle" ||
 			match.fullPath === "/play/local" ||
 			match.fullPath === "/play/training" ||
 			match.fullPath === "/play/match/$matchId" ||

@@ -65,6 +65,17 @@ const GAME_MODES = [
 		cta: "PLAY CPU →",
 	},
 	{
+		label: "SIM",
+		title: "AI Battle",
+		description:
+			"Spin up a full autonomous match and watch 2 to 8 bots play the board out.",
+		href: "/play/ai-battle" as const,
+		accent: "rgba(255,255,255,0.72)",
+		border: "rgba(255,255,255,0.12)",
+		background: "rgba(255,255,255,0.03)",
+		cta: "RUN BATTLE →",
+	},
+	{
 		label: "OFFLINE",
 		title: "Local Game",
 		description:

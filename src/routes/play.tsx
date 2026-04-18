@@ -74,6 +74,18 @@ function PlayHub() {
 			grid: "md:col-span-5",
 			height: "sm:min-h-[202px]",
 		},
+		{
+			to: "/play/ai-battle" as const,
+			label: "Sim",
+			title: "AI Battle",
+			copy: "Let 2 to 8 bots fight it out.",
+			foot: "Hands off",
+			icon: BrainCircuit,
+			accent: "rgba(255,255,255,0.06)",
+			glow: "rgba(255,255,255,0.1)",
+			grid: "md:col-span-12",
+			height: "sm:min-h-[176px]",
+		},
 	] as const;
 
 	return (
