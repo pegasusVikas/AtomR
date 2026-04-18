@@ -25,13 +25,54 @@ function isLocalSiteUrl(url?: string) {
 	}
 }
 
+function isLocalConvexRuntime(url?: string) {
+	if (!url) return false
+
+	try {
+		const { hostname } = new URL(url)
+		return hostname === 'localhost' || hostname === '127.0.0.1'
+	} catch {
+		return false
+	}
+}
+
+function readTrustedOrigins(siteUrl: string, isLocal: boolean) {
+	const trustedOrigins = new Set<string>([siteUrl])
+	const configuredOrigins = process.env.TRUSTED_ORIGINS
+		?.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean)
+
+	for (const origin of configuredOrigins ?? []) {
+		trustedOrigins.add(origin)
+	}
+
+	if (isLocal) {
+		trustedOrigins.add(fallbackLocalSiteUrl)
+		trustedOrigins.add('http://127.0.0.1:3000')
+	}
+
+	return Array.from(trustedOrigins)
+}
+
 function readAuthModes() {
 	const configuredSiteUrl = process.env.SITE_URL || process.env.BETTER_AUTH_URL
-	const siteUrl = configuredSiteUrl || fallbackLocalSiteUrl
-	const isLocal = isLocalSiteUrl(configuredSiteUrl)
+	const convexCloudUrl = process.env.CONVEX_CLOUD_URL
+	const convexSiteUrl = process.env.CONVEX_SITE_URL
+	const isLocal =
+		isLocalSiteUrl(configuredSiteUrl) ||
+		isLocalConvexRuntime(convexCloudUrl) ||
+		isLocalConvexRuntime(convexSiteUrl)
 	const googleEnabled = Boolean(
 		process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
 	)
+	const siteUrl = configuredSiteUrl || (isLocal ? fallbackLocalSiteUrl : undefined)
+
+	if (!siteUrl) {
+		throw new Error(
+			'SITE_URL or BETTER_AUTH_URL must be configured for cloud auth deployments.',
+		)
+	}
 
 	return {
 		siteUrl,
@@ -56,14 +97,12 @@ function resolveAuthModesForAuth() {
 export const authComponent = createClient<DataModel>(components.betterAuth)
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
-	const { siteUrl, googleEnabled, emailPasswordEnabled } =
+	const { siteUrl, isLocal, googleEnabled, emailPasswordEnabled } =
 		resolveAuthModesForAuth()
 
 	return betterAuth({
 		baseURL: siteUrl,
-		trustedOrigins: Array.from(
-			new Set([siteUrl, fallbackLocalSiteUrl, 'http://127.0.0.1:3000']),
-		),
+		trustedOrigins: readTrustedOrigins(siteUrl, isLocal),
 		database: authComponent.adapter(ctx),
 		emailAndPassword: {
 			enabled: emailPasswordEnabled,
