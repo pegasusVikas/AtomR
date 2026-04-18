@@ -13,8 +13,8 @@ import {
 import {
 	getActivePlayerOrder,
 	PLAYER_COLORS,
-	type PlayerId,
 } from "#/features/chain-reaction/constants";
+import type { PlayerId } from "#/features/chain-reaction/types";
 import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";
 import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
 import ChainReactionBoard from "./ChainReactionBoard";

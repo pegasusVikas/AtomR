@@ -19,7 +19,6 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@better-auth/cli": "^1.4.21",
     "@convex-dev/better-auth": "0.11.4",
     "@convex-dev/react-query": "0.1.0",
     "@posthog/react": "^1.9.0",
@@ -32,14 +31,15 @@
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-router-ssr-query": "latest",
     "@tanstack/react-start": "latest",
-    "@tanstack/router-plugin": "^1.167.22",
+    "@tanstack/router-plugin": "latest",
     "@tanstack/store": "latest",
     "better-auth": "1.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.35.1",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.577.0",
-    "posthog-js": "^1.368.1",
+    "posthog-js": "^1.369.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "storybook": "^10.3.5",
@@ -50,6 +50,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
     "@biomejs/biome": "2.4.5",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "latest",

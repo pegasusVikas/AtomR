@@ -106,7 +106,7 @@ function HomePage() {
 	const { data: session } = authClient.useSession();
 	const activeMatch = useQuery(
 		api.online.getMyActiveMatch,
-		session?.user ? { authUserId: session.user.id } : "skip",
+		session?.user ? {} : "skip",
 	);
 
 	useEffect(() => {

@@ -36,7 +36,7 @@ function OnlineLobbyPage() {
 
 	const queueEntry = useQuery(
 		api.online.getMyQueueEntry,
-		session?.user ? { authUserId: session.user.id } : "skip",
+		session?.user ? {} : "skip",
 	);
 
 	// Auto-navigate when matched
@@ -54,11 +54,7 @@ function OnlineLobbyPage() {
 
 	const ensureViewer = useEffectEvent(async () => {
 		if (!user) return;
-		await syncViewer({
-			authUserId: user.id,
-			displayName,
-			email: user.email,
-		});
+		await syncViewer({});
 	});
 
 	useEffect(() => {
@@ -137,7 +133,7 @@ function OnlineLobbyPage() {
 										className="rounded-full border border-white/12 px-5 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-white/60 transition-colors hover:text-white"
 										onClick={async () => {
 											setIsSearching(false);
-											await leaveQueue({ authUserId: user.id });
+											await leaveQueue({});
 										}}
 									>
 										Cancel
@@ -151,11 +147,7 @@ function OnlineLobbyPage() {
 										setIsSearching(true);
 										try {
 											await ensureViewer();
-											const result = await joinQueue({
-												authUserId: user.id,
-												displayName,
-												email: user.email,
-											});
+											const result = await joinQueue({});
 											if (result.status === "matched" && result.matchId) {
 												void navigate({
 													to: "/play/match/$matchId",
@@ -214,9 +206,6 @@ function OnlineLobbyPage() {
 									try {
 										await ensureViewer();
 										const result = await createPrivateRoom({
-											authUserId: user.id,
-											displayName,
-											email: user.email,
 											rows: roomRows,
 											cols: roomCols,
 										});

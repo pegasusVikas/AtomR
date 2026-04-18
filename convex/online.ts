@@ -1,6 +1,7 @@
 import { internal } from './_generated/api'
 import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { authComponent } from './auth'
 import {
 	applyMove,
 	createInitialGameState,
@@ -17,6 +18,13 @@ import {
 	isMatchedQueueEntryObsolete as isMatchedQueueEntryObsoleteRule,
 	isSearchingQueueEntryStale,
 } from '../src/features/chain-reaction/onlineMatchmaking'
+
+const MIN_PRIVATE_ROWS = 3
+const MAX_PRIVATE_ROWS = 12
+const MIN_PRIVATE_COLS = 4
+const MAX_PRIVATE_COLS = 16
+const MAX_SEARCHING_QUEUE_SCAN = 128
+const MAX_ACTIVE_MATCH_SCAN = 24
 
 function getOpponentPlayer(playerId: PlayerId): PlayerId {
 	return playerId === 'p1' ? 'p2' : 'p1'
@@ -57,6 +65,57 @@ function toGameState(match: any): GameState {
 	}
 }
 
+function assertBoardSize(rows: number, cols: number) {
+	if (
+		!Number.isInteger(rows) ||
+		!Number.isInteger(cols) ||
+		rows < MIN_PRIVATE_ROWS ||
+		rows > MAX_PRIVATE_ROWS ||
+		cols < MIN_PRIVATE_COLS ||
+		cols > MAX_PRIVATE_COLS
+	) {
+		throw new Error('Invalid board size')
+	}
+}
+
+async function requireAuthUser(ctx: any) {
+	const authUser = await authComponent.getAuthUser(ctx)
+	if (!authUser) {
+		throw new Error('Not authenticated')
+	}
+	return authUser
+}
+
+async function getViewerByAuthUserId(ctx: any, authUserId: string) {
+	return await ctx.db
+		.query('users')
+		.withIndex('by_auth_user_id', (q: any) => q.eq('authUserId', authUserId))
+		.unique()
+}
+
+async function ensureCurrentUser(ctx: any) {
+	const authUser = await requireAuthUser(ctx)
+	const userId = await ensureUser(
+		ctx,
+		authUser._id,
+		authUser.name || authUser.email || 'Player',
+		authUser.email ?? undefined,
+	)
+	const viewer = await ctx.db.get(userId)
+	if (!viewer) throw new Error('User not found')
+	return { authUser, viewer, userId }
+}
+
+async function getCurrentViewer(ctx: any) {
+	const authUser = await authComponent.getAuthUser(ctx)
+	if (!authUser) return null
+	const viewer = await getViewerByAuthUserId(ctx, authUser._id)
+	return {
+		authUser,
+		viewer,
+	}
+}
+
 async function findFreshSearchingOpponent(
 	ctx: any,
 	{
@@ -70,7 +129,7 @@ async function findFreshSearchingOpponent(
 	const searchingEntries = await ctx.db
 		.query('matchmakingQueue')
 		.withIndex('by_status_requested_at', (q: any) => q.eq('status', 'searching'))
-		.collect()
+		.take(MAX_SEARCHING_QUEUE_SCAN)
 
 	const usersById = new Map()
 	for (const entry of searchingEntries) {
@@ -144,7 +203,7 @@ async function cleanupStaleQueueEntries(ctx: any, now = Date.now()) {
 	const searchingEntries = await ctx.db
 		.query('matchmakingQueue')
 		.withIndex('by_status_requested_at', (q: any) => q.eq('status', 'searching'))
-		.collect()
+		.take(MAX_SEARCHING_QUEUE_SCAN)
 
 	const usersById = new Map()
 	for (const entry of searchingEntries) {
@@ -297,37 +356,21 @@ async function resolveTurnTimeoutIfNeeded(
 }
 
 export const syncViewer = mutation({
-	args: {
-		authUserId: v.string(),
-		displayName: v.string(),
-		email: v.optional(v.string()),
-	},
-	handler: async (ctx, args) => {
-		const userId = await ensureUser(
-			ctx,
-			args.authUserId,
-			args.displayName,
-			args.email,
-		)
+	args: {},
+	handler: async (ctx) => {
+		const { userId } = await ensureCurrentUser(ctx)
 		return { userId }
 	},
 })
 
 export const createPrivateRoom = mutation({
 	args: {
-		authUserId: v.string(),
-		displayName: v.string(),
-		email: v.optional(v.string()),
 		rows: v.number(),
 		cols: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const hostUserId = await ensureUser(
-			ctx,
-			args.authUserId,
-			args.displayName,
-			args.email,
-		)
+		assertBoardSize(args.rows, args.cols)
+		const { userId: hostUserId } = await ensureCurrentUser(ctx)
 		for (let attempt = 0; attempt < 10; attempt += 1) {
 			const code = makeRoomCode()
 			const existing = await ctx.db
@@ -352,18 +395,10 @@ export const createPrivateRoom = mutation({
 
 export const joinPrivateRoom = mutation({
 	args: {
-		authUserId: v.string(),
-		displayName: v.string(),
-		email: v.optional(v.string()),
 		code: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const guestUserId = await ensureUser(
-			ctx,
-			args.authUserId,
-			args.displayName,
-			args.email,
-		)
+		const { userId: guestUserId } = await ensureCurrentUser(ctx)
 		const room = await ctx.db
 			.query('privateRooms')
 			.withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
@@ -423,20 +458,11 @@ export const joinPrivateRoom = mutation({
 })
 
 export const joinQueue = mutation({
-	args: {
-		authUserId: v.string(),
-		displayName: v.string(),
-		email: v.optional(v.string()),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
 		const now = Date.now()
 		await cleanupStaleQueueEntries(ctx, now)
-		const userId = await ensureUser(
-			ctx,
-			args.authUserId,
-			args.displayName,
-			args.email,
-		)
+		const { userId } = await ensureCurrentUser(ctx)
 
 		const existing = await ctx.db
 			.query('matchmakingQueue')
@@ -501,14 +527,10 @@ export const joinQueue = mutation({
 })
 
 export const leaveQueue = mutation({
-	args: { authUserId: v.string() },
-	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) =>
-				q.eq('authUserId', args.authUserId),
-			)
-			.unique()
+	args: {},
+	handler: async (ctx) => {
+		const current = await getCurrentViewer(ctx)
+		const viewer = current?.viewer
 		if (!viewer) return
 		const entry = await ctx.db
 			.query('matchmakingQueue')
@@ -522,14 +544,10 @@ export const leaveQueue = mutation({
 })
 
 export const getMyQueueEntry = query({
-	args: { authUserId: v.string() },
-	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) =>
-				q.eq('authUserId', args.authUserId),
-			)
-			.unique()
+	args: {},
+	handler: async (ctx) => {
+		const current = await getCurrentViewer(ctx)
+		const viewer = current?.viewer
 		if (!viewer) return null
 
 		const entry = await ctx.db
@@ -558,46 +576,81 @@ export const getMyQueueEntry = query({
 export const getRoomByCode = query({
 	args: { code: v.string() },
 	handler: async (ctx, args) => {
-		return await ctx.db
+		const current = await getCurrentViewer(ctx)
+		if (!current?.viewer) return null
+
+		const room = await ctx.db
 			.query('privateRooms')
 			.withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
 			.unique()
+		if (!room) return null
+
+		return {
+			_id: room._id,
+			code: room.code,
+			rows: room.rows,
+			cols: room.cols,
+			status: room.status,
+			expiresAt: room.expiresAt,
+			matchId: room.matchId ?? null,
+		}
 	},
 })
 
 export const getMatch = query({
 	args: { matchId: v.id('matches') },
 	handler: async (ctx, args) => {
+		const current = await getCurrentViewer(ctx)
+		const viewer = current?.viewer
+		if (!viewer) return null
+
 		const match = await ctx.db.get(args.matchId)
 		if (!match) return null
+		const viewerPlayerId =
+			match.player1UserId === viewer._id
+				? 'p1'
+				: match.player2UserId === viewer._id
+					? 'p2'
+					: null
+		if (!viewerPlayerId) return null
+
 		const player1 = await ctx.db.get(match.player1UserId)
 		const player2 = await ctx.db.get(match.player2UserId)
 		return {
 			...match,
-			player1,
-			player2,
+			player1: player1
+				? {
+						displayName: player1.displayName,
+					}
+				: null,
+			player2: player2
+				? {
+						displayName: player2.displayName,
+					}
+				: null,
+			viewerPlayerId,
 		}
 	},
 })
 
 export const getMyActiveMatch = query({
-	args: { authUserId: v.string() },
-	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
-			.unique()
+	args: {},
+	handler: async (ctx) => {
+		const current = await getCurrentViewer(ctx)
+		const viewer = current?.viewer
 		if (!viewer) return null
 
 		const [playerOneMatches, playerTwoMatches] = await Promise.all([
 			ctx.db
 				.query('matches')
 				.withIndex('by_player1_user_id', (q) => q.eq('player1UserId', viewer._id))
-				.collect(),
+				.order('desc')
+				.take(MAX_ACTIVE_MATCH_SCAN),
 			ctx.db
 				.query('matches')
 				.withIndex('by_player2_user_id', (q) => q.eq('player2UserId', viewer._id))
-				.collect(),
+				.order('desc')
+				.take(MAX_ACTIVE_MATCH_SCAN),
 		])
 
 		const activeMatch = [...playerOneMatches, ...playerTwoMatches]
@@ -612,7 +665,7 @@ export const getMyActiveMatch = query({
 	},
 })
 
-export const cleanupLegacyRematchFields = mutation({
+export const cleanupLegacyRematchFields = internalMutation({
 	args: {
 		limit: v.optional(v.number()),
 	},
@@ -657,14 +710,9 @@ export const resolveTurnTimeout = internalMutation({
 export const claimTurnTimeout = mutation({
 	args: {
 		matchId: v.id('matches'),
-		authUserId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
-			.unique()
-		if (!viewer) throw new Error('User not found')
+		const { viewer } = await ensureCurrentUser(ctx)
 
 		const match = await ctx.db.get(args.matchId)
 		if (!match) throw new Error('Match not found')
@@ -681,16 +729,11 @@ export const claimTurnTimeout = mutation({
 export const submitMove = mutation({
 	args: {
 		matchId: v.id('matches'),
-		authUserId: v.string(),
 		row: v.number(),
 		col: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
-			.unique()
-		if (!viewer) throw new Error('User not found')
+		const { viewer } = await ensureCurrentUser(ctx)
 
 		const match = await ctx.db.get(args.matchId)
 		if (!match) throw new Error('Match not found')
@@ -732,14 +775,9 @@ export const submitMove = mutation({
 export const resignMatch = mutation({
 	args: {
 		matchId: v.id('matches'),
-		authUserId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) => q.eq('authUserId', args.authUserId))
-			.unique()
-		if (!viewer) throw new Error('User not found')
+		const { viewer } = await ensureCurrentUser(ctx)
 
 		const match = await ctx.db.get(args.matchId)
 		if (!match) throw new Error('Match not found')

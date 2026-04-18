@@ -23,7 +23,6 @@ function JoinRoomPage() {
 	const [error, setError] = useState<string | null>(null);
 
 	if (!user) return null;
-	const currentUser = user;
 
 	const isLoading = room === undefined;
 	const isNotFound = room === null;
@@ -34,12 +33,7 @@ function JoinRoomPage() {
 		setError(null);
 		setIsJoining(true);
 		try {
-			const result = await joinPrivateRoom({
-				authUserId: currentUser.id,
-				displayName: currentUser.name || currentUser.email || "Player",
-				email: currentUser.email,
-				code,
-			});
+			const result = await joinPrivateRoom({ code });
 			if (result.matchId) {
 				await navigate({
 					to: "/play/match/$matchId",

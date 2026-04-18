@@ -57,21 +57,11 @@ function MatchPage() {
 		null,
 	);
 	const user = session?.user ?? null;
-	const viewerPlayerId = useMemo(() => {
-		if (!session?.user || !match) return null;
-		if (match.player1?.authUserId === session.user.id) return "p1";
-		if (match.player2?.authUserId === session.user.id) return "p2";
-		return null;
-	}, [match, session?.user]);
-	const displayName = user?.name || user?.email || "Player";
+	const viewerPlayerId = match?.viewerPlayerId ?? null;
 
 	const heartbeatViewer = useEffectEvent(async () => {
 		if (!user) return;
-		await syncViewer({
-			authUserId: user.id,
-			displayName,
-			email: user.email,
-		});
+		await syncViewer({});
 	});
 
 	useEffect(() => {
@@ -220,10 +210,7 @@ function MatchPage() {
 		if (timeoutClaimedForRef.current === claimKey) return;
 		timeoutClaimedForRef.current = claimKey;
 
-		void claimTurnTimeout({
-			matchId: match._id,
-			authUserId: session.user.id,
-		})
+		void claimTurnTimeout({ matchId: match._id })
 			.then((result) => {
 				if (!result.timedOut) {
 					timeoutClaimedForRef.current = null;
@@ -267,14 +254,20 @@ function MatchPage() {
 		return () => obs.disconnect();
 	}, [matchState]);
 
-	if (!user || !match || !matchState) {
+	if (!user || match === undefined || !matchState) {
 		return (
 			<main className="min-h-[100dvh] bg-[#07070b] p-8 text-white">
 				Loading match…
 			</main>
 		);
 	}
-	const currentUser = user;
+	if (match === null) {
+		return (
+			<main className="min-h-[100dvh] bg-[#07070b] p-8 text-white">
+				Match unavailable.
+			</main>
+		);
+	}
 
 	const activeColor = matchState.winner
 		? PLAYER_COLORS[matchState.winner]
@@ -438,10 +431,7 @@ function MatchPage() {
 							}
 							setResignPending(true);
 							try {
-								await resignMatch({
-									matchId: match._id,
-									authUserId: currentUser.id,
-								});
+								await resignMatch({ matchId: match._id });
 							} finally {
 								setResignPending(false);
 							}
@@ -486,7 +476,6 @@ function MatchPage() {
 
 							void submitMove({
 								matchId: match._id,
-								authUserId: currentUser.id,
 								row,
 								col,
 							}).catch(() => {
