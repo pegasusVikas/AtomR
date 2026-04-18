@@ -16,12 +16,14 @@ function JoinRoomPage() {
 	const navigate = useNavigate();
 	const { code } = Route.useParams();
 	const { data: session } = authClient.useSession();
+	const user = session?.user ?? null;
 	const room = useQuery(api.online.getRoomByCode, { code });
 	const joinPrivateRoom = useMutation(api.online.joinPrivateRoom);
 	const [isJoining, setIsJoining] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	if (!session?.user) return null;
+	if (!user) return null;
+	const currentUser = user;
 
 	const isLoading = room === undefined;
 	const isNotFound = room === null;
@@ -33,9 +35,9 @@ function JoinRoomPage() {
 		setIsJoining(true);
 		try {
 			const result = await joinPrivateRoom({
-				authUserId: session.user.id,
-				displayName: session.user.name || session.user.email || "Player",
-				email: session.user.email,
+				authUserId: currentUser.id,
+				displayName: currentUser.name || currentUser.email || "Player",
+				email: currentUser.email,
 				code,
 			});
 			if (result.matchId) {

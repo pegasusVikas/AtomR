@@ -555,66 +555,6 @@ export const getMyQueueEntry = query({
 	},
 })
 
-export const startRematch = mutation({
-	args: {
-		matchId: v.id('matches'),
-		authUserId: v.string(),
-	},
-	handler: async (ctx, args) => {
-		const viewer = await ctx.db
-			.query('users')
-			.withIndex('by_auth_user_id', (q) =>
-				q.eq('authUserId', args.authUserId),
-			)
-			.unique()
-		if (!viewer) throw new Error('User not found')
-		const match = await ctx.db.get(args.matchId)
-		if (!match) throw new Error('Match not found')
-		if (!match.winner) throw new Error('Match is not over yet')
-		const isPlayer =
-			match.player1UserId === viewer._id ||
-			match.player2UserId === viewer._id
-		if (!isPlayer) throw new Error('Not a player in this match')
-
-		if (match.rematchMatchId) {
-			return { matchId: match.rematchMatchId }
-		}
-
-		const initialState = createInitialGameState(match.rows, match.cols, 2)
-		const now = Date.now()
-		const newMatchId = await ctx.db.insert('matches', {
-			type: match.type,
-			roomId: match.roomId,
-			player1UserId: match.player2UserId,
-			player2UserId: match.player1UserId,
-			rows: match.rows,
-			cols: match.cols,
-			playerCount: initialState.playerCount,
-			board: initialState.board,
-			currentPlayer: initialState.currentPlayer,
-			turnNumber: initialState.turnNumber,
-			hasPlayed: toStoredPlayerFlags(initialState.hasPlayed),
-			eliminated: toStoredPlayerFlags(initialState.eliminated),
-			winner: initialState.winner,
-			phase: initialState.phase,
-			lastMoveEvents: [],
-			createdAt: now,
-			startedAt: now,
-			lastMoveAt: now,
-		})
-
-		await scheduleTurnTimeout(ctx, {
-			matchId: newMatchId,
-			expectedTurnNumber: initialState.turnNumber,
-			expectedCurrentPlayer: initialState.currentPlayer,
-			expectedLastMoveAt: now,
-		})
-
-		await ctx.db.patch(match._id, { rematchMatchId: newMatchId })
-		return { matchId: newMatchId }
-	},
-})
-
 export const getRoomByCode = query({
 	args: { code: v.string() },
 	handler: async (ctx, args) => {

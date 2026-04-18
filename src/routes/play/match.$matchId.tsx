@@ -14,6 +14,7 @@ import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import {
 	type Board,
+	type GameState,
 	type LastMove,
 	ONLINE_TURN_TIME_LIMIT_MS,
 	ONLINE_VIEWER_HEARTBEAT_MS,
@@ -47,9 +48,7 @@ function MatchPage() {
 	const syncViewer = useMutation(api.online.syncViewer);
 	const claimTurnTimeout = useMutation(api.online.claimTurnTimeout);
 	const submitMove = useMutation(api.online.submitMove);
-	const startRematch = useMutation(api.online.startRematch);
 	const resignMatch = useMutation(api.online.resignMatch);
-	const [rematchPending, setRematchPending] = useState(false);
 	const [resignPending, setResignPending] = useState(false);
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -103,13 +102,14 @@ function MatchPage() {
 			board: match.board,
 			rows: match.rows,
 			cols: match.cols,
+			playerCount: match.playerCount ?? 2,
 			currentPlayer: match.currentPlayer,
 			turnNumber: match.turnNumber,
 			hasPlayed: match.hasPlayed,
 			eliminated: match.eliminated,
 			winner: match.winner,
 			phase: match.winner ? "gameOver" : "idle",
-		} as const;
+		} satisfies GameState;
 	}, [match]);
 
 	const playback = useResolvedGamePlayback(
@@ -117,6 +117,7 @@ function MatchPage() {
 			board: [],
 			rows: 0,
 			cols: 0,
+			playerCount: 2,
 			currentPlayer: "p1",
 			turnNumber: 0,
 			hasPlayed: { p1: false, p2: false },
@@ -242,12 +243,13 @@ function MatchPage() {
 	}, [boardDims, matchState]);
 
 	useLayoutEffect(() => {
-		const container = containerRef.current;
-		if (!container || !matchState) return;
-		function measure() {
-			const { width, height } = container.getBoundingClientRect();
+		const element = containerRef.current;
+		const nextMatchState = matchState;
+		if (!element || !nextMatchState) return;
+		function measure(target: HTMLDivElement, state: GameState) {
+			const { width, height } = target.getBoundingClientRect();
 			if (!width || !height) return;
-			const aspect = matchState.cols / matchState.rows;
+			const aspect = state.cols / state.rows;
 			let w: number;
 			let h: number;
 			if (width / height > aspect) {
@@ -259,9 +261,9 @@ function MatchPage() {
 			}
 			setBoardDims({ w, h });
 		}
-		measure();
-		const obs = new ResizeObserver(measure);
-		obs.observe(container);
+		measure(element, nextMatchState);
+		const obs = new ResizeObserver(() => measure(element, nextMatchState));
+		obs.observe(element);
 		return () => obs.disconnect();
 	}, [matchState]);
 
@@ -272,6 +274,7 @@ function MatchPage() {
 			</main>
 		);
 	}
+	const currentUser = user;
 
 	const activeColor = matchState.winner
 		? PLAYER_COLORS[matchState.winner]
@@ -437,7 +440,7 @@ function MatchPage() {
 							try {
 								await resignMatch({
 									matchId: match._id,
-									authUserId: session.user.id,
+									authUserId: currentUser.id,
 								});
 							} finally {
 								setResignPending(false);
@@ -483,7 +486,7 @@ function MatchPage() {
 
 							void submitMove({
 								matchId: match._id,
-								authUserId: session.user.id,
+								authUserId: currentUser.id,
 								row,
 								col,
 							}).catch(() => {
@@ -496,33 +499,14 @@ function MatchPage() {
 					/>
 					<GameOverlay
 						state={playbackState}
-						onReset={async () => {
-							if (!session?.user || !match) return;
-							if (match.rematchMatchId) {
-								void navigate({
-									to: "/play/match/$matchId",
-									params: { matchId: match.rematchMatchId },
-								});
-								return;
-							}
-							setRematchPending(true);
-							try {
-								const result = await startRematch({
-									matchId: match._id,
-									authUserId: session.user.id,
-								});
-								void navigate({
-									to: "/play/match/$matchId",
-									params: { matchId: result.matchId },
-								});
-							} finally {
-								setRematchPending(false);
-							}
+						onReset={() => {
+							void navigate({ to: "/play/online" });
 						}}
-						resetLabel={
-							match.rematchMatchId ? "new match ready →" : "play again"
-						}
-						resetPending={rematchPending}
+						resetLabel="leave match"
+						playerNames={{
+							p1: match.player1?.displayName ?? "Player 1",
+							p2: match.player2?.displayName ?? "Player 2",
+						}}
 					/>
 				</div>
 			</div>

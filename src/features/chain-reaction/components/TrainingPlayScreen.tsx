@@ -51,11 +51,11 @@ export default function TrainingPlayScreen() {
 	const suggestionTimerRef = useRef<number | null>(null);
 
 	useLayoutEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
+		const element = containerRef.current;
+		if (!element) return;
 
-		function measure() {
-			const { width, height } = container.getBoundingClientRect();
+		function measure(target: HTMLDivElement) {
+			const { width, height } = target.getBoundingClientRect();
 			if (!width || !height) return;
 			const aspect = cols / rows;
 			let w: number;
@@ -70,9 +70,9 @@ export default function TrainingPlayScreen() {
 			setBoardDims({ w, h });
 		}
 
-		measure();
-		const obs = new ResizeObserver(measure);
-		obs.observe(container);
+		measure(element);
+		const obs = new ResizeObserver(() => measure(element));
+		obs.observe(element);
 		return () => obs.disconnect();
 	}, [rows, cols]);
 
