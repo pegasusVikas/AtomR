@@ -8,8 +8,8 @@ import {
 } from "react";
 import { configForDifficulty } from "#/features/chain-reaction/ai";
 import {
-	requestCpuMove,
 	type AiMoveTask,
+	requestCpuMove,
 } from "#/features/chain-reaction/ai-worker-client";
 import {
 	getActivePlayerOrder,
@@ -38,7 +38,6 @@ export default function AiBattleScreen() {
 	const [playerCount, setPlayerCount] = useState(4);
 	const [difficulty, setDifficulty] = useState(6);
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [isThinking, setIsThinking] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 
 	useEffect(() => {
@@ -77,7 +76,6 @@ export default function AiBattleScreen() {
 	useEffect(() => {
 		clearCpuTimer();
 		cancelCpuTask();
-		setIsThinking(false);
 
 		if (
 			resolvedState.phase !== "idle" ||
@@ -88,7 +86,6 @@ export default function AiBattleScreen() {
 		}
 
 		const { thinkDelayMs } = configForDifficulty(difficulty);
-		setIsThinking(true);
 		cpuTimerRef.current = window.setTimeout(() => {
 			cpuTimerRef.current = null;
 			const task = requestCpuMove(resolvedState, difficulty);
@@ -96,14 +93,10 @@ export default function AiBattleScreen() {
 			void task.promise
 				.then((move) => {
 					if (cpuTaskRef.current !== task) return;
-					setIsThinking(false);
 					if (!move) return;
 					handleMove(move);
 				})
-				.catch(() => {
-					if (cpuTaskRef.current !== task) return;
-					setIsThinking(false);
-				})
+				.catch(() => {})
 				.finally(() => {
 					if (cpuTaskRef.current === task) {
 						cpuTaskRef.current = null;
@@ -225,16 +218,6 @@ export default function AiBattleScreen() {
 					/>
 				</div>
 			</div>
-
-			<p
-				className="relative shrink-0 text-center text-[10px] uppercase tracking-[0.3em]"
-				style={{ color: "rgba(255,255,255,0.12)" }}
-			>
-				{isThinking
-					? "ai thinking · autonomous match in progress"
-					: "autonomous match · board, players, and difficulty in settings"}
-			</p>
-
 			<GameSettings
 				open={settingsOpen}
 				rows={rows}
@@ -245,7 +228,7 @@ export default function AiBattleScreen() {
 				difficultyLabel={difficultyLabel}
 				onApply={(newRows, newCols, newDifficulty, newPlayerCount) => {
 					clearCpuTimer();
-					setIsThinking(false);
+					cancelCpuTask();
 					setRows(newRows);
 					setCols(newCols);
 					if (newDifficulty !== undefined) {
