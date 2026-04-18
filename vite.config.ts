@@ -11,6 +11,17 @@ const config = defineConfig({
 	ssr: {
 		noExternal: ["@convex-dev/better-auth"],
 	},
+	server: {
+		watch: {
+			ignored: [
+				"**/.convex/**",
+				"**/.output/**",
+				"**/.pnpm-store/**",
+			],
+			usePolling: true,
+			interval: 250,
+		},
+	},
 	plugins: [
 		devtools(),
 		tsconfigPaths({ projects: ["./tsconfig.json"] }),

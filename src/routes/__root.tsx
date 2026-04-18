@@ -36,6 +36,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	}),
 	shellComponent: RootDocument,
 	component: RootLayout,
+	notFoundComponent: () => <div>Not found</div>,
 });
 
 function RootLayout() {
@@ -46,7 +47,9 @@ function RootLayout() {
 		(match) =>
 			match.fullPath === "/sign-in" ||
 			match.fullPath === "/sign-up" ||
+			match.fullPath === "/play/ai" ||
 			match.fullPath === "/play/local" ||
+			match.fullPath === "/play/training" ||
 			match.fullPath === "/play/match/$matchId" ||
 			match.fullPath === "/play/room/$code",
 	);
@@ -54,7 +57,9 @@ function RootLayout() {
 	return (
 		<>
 			{!isNoChrome ? <Sidebar /> : null}
-			<div style={!isNoChrome ? { paddingLeft: 220 } : undefined}>
+			<div
+				className={!isNoChrome ? "min-w-0 pl-55 max-[960px]:pl-0" : undefined}
+			>
 				<Outlet />
 			</div>
 			{!isNoChrome ? (
@@ -82,7 +87,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<script>{THEME_INIT_SCRIPT}</script>
 				<HeadContent />
 			</head>
-			<body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
+			<body className="font-sans antialiased wrap-anywhere selection:bg-[rgba(79,184,178,0.24)]">
 				<ConvexProvider>
 					<PostHogProvider>{children}</PostHogProvider>
 				</ConvexProvider>

@@ -2,11 +2,12 @@ import {
 	type ApplyMoveResult,
 	type Board,
 	type Cell,
+	clampPlayerCount,
 	createPlayerFlags,
 	DEFAULT_COLS,
 	DEFAULT_ROWS,
 	type GameState,
-	PLAYER_ORDER,
+	getActivePlayerOrder,
 	type PlayerFlags,
 	type PlayerId,
 	type Position,
@@ -27,6 +28,8 @@ function createCell(): Cell {
 function cloneBoard(board: Board): Board {
 	return board.map((row) => row.map((cell) => ({ ...cell })));
 }
+
+const MAX_RESOLUTION_STEPS = 2048;
 
 function isInBounds(
 	row: number,
@@ -49,16 +52,21 @@ export function createInitialBoard(
 export function createInitialGameState(
 	rows = DEFAULT_ROWS,
 	cols = DEFAULT_COLS,
+	playerCount = 2,
 ): GameState {
+	const activePlayers = getActivePlayerOrder(playerCount);
 	return {
 		board: createInitialBoard(rows, cols),
 		rows,
 		cols,
-		currentPlayer: "p1",
+		playerCount: clampPlayerCount(playerCount),
+		currentPlayer: activePlayers[0] ?? "p1",
 		turnNumber: 0,
 		hasPlayed: createPlayerFlags(false),
 		eliminated: createPlayerFlags(false),
 		winner: null,
+		isDraw: false,
+		drawReason: null,
 		phase: "idle",
 	};
 }
@@ -117,49 +125,75 @@ export function countPlayerOrbs(board: Board, playerId: PlayerId): number {
 }
 
 export function allPlayersHavePlayed(
-	state: Pick<GameState, "hasPlayed">,
+	state: Pick<GameState, "hasPlayed" | "playerCount">,
 ): boolean {
-	return PLAYER_ORDER.every((playerId) => state.hasPlayed[playerId]);
+	return getActivePlayerOrder(state.playerCount).every(
+		(playerId) => state.hasPlayed[playerId] ?? false,
+	);
 }
 
 export function recomputeEliminations(
-	state: Pick<GameState, "board" | "hasPlayed">,
+	state: Pick<GameState, "board" | "hasPlayed" | "playerCount">,
 ): PlayerFlags {
 	if (!allPlayersHavePlayed(state)) {
 		return createPlayerFlags(false);
 	}
 
-	return {
-		p1: countPlayerOrbs(state.board, "p1") === 0,
-		p2: countPlayerOrbs(state.board, "p2") === 0,
-	};
+	const eliminated = createPlayerFlags(false);
+	for (const playerId of getActivePlayerOrder(state.playerCount)) {
+		eliminated[playerId] = countPlayerOrbs(state.board, playerId) === 0;
+	}
+	return eliminated;
 }
 
 export function recomputeWinner(
-	state: Pick<GameState, "board" | "eliminated" | "hasPlayed">,
+	state: Pick<GameState, "board" | "eliminated" | "hasPlayed" | "playerCount">,
 ): PlayerId | null {
 	if (!allPlayersHavePlayed(state)) {
 		return null;
 	}
 
-	const activePlayers = PLAYER_ORDER.filter((playerId) => {
-		return (
-			!state.eliminated[playerId] && countPlayerOrbs(state.board, playerId) > 0
-		);
-	});
+	const activePlayers = getActivePlayerOrder(state.playerCount).filter(
+		(playerId) => {
+			return (
+				!(state.eliminated[playerId] ?? false) &&
+				countPlayerOrbs(state.board, playerId) > 0
+			);
+		},
+	);
 
 	return activePlayers.length === 1 ? activePlayers[0] : null;
 }
 
-export function getNextPlayer(
-	state: Pick<GameState, "currentPlayer" | "eliminated">,
-): PlayerId {
-	const currentIndex = PLAYER_ORDER.indexOf(state.currentPlayer);
+function getResolvedWinnerFromBoard(
+	board: Board,
+	hasPlayed: PlayerFlags,
+	playerCount: number,
+): PlayerId | null {
+	const eliminated = recomputeEliminations({
+		board,
+		hasPlayed,
+		playerCount,
+	});
 
-	for (let offset = 1; offset <= PLAYER_ORDER.length; offset += 1) {
+	return recomputeWinner({
+		board,
+		eliminated,
+		hasPlayed,
+		playerCount,
+	});
+}
+
+export function getNextPlayer(
+	state: Pick<GameState, "currentPlayer" | "eliminated" | "playerCount">,
+): PlayerId {
+	const activePlayers = getActivePlayerOrder(state.playerCount);
+	const currentIndex = activePlayers.indexOf(state.currentPlayer);
+
+	for (let offset = 1; offset <= activePlayers.length; offset += 1) {
 		const nextPlayer =
-			PLAYER_ORDER[(currentIndex + offset) % PLAYER_ORDER.length];
-		if (!state.eliminated[nextPlayer]) {
+			activePlayers[(currentIndex + offset) % activePlayers.length];
+		if (nextPlayer && !(state.eliminated[nextPlayer] ?? false)) {
 			return nextPlayer;
 		}
 	}
@@ -210,26 +244,47 @@ function resolveBoard(
 	rows: number,
 	cols: number,
 	currentPlayer: PlayerId,
+	playerCount: number,
 	hasPlayed: PlayerFlags,
 	queue: Position[],
 	events: ResolutionEvent[],
-): boolean {
+): { didLoop: boolean; winner: PlayerId | null } {
 	const queued = new Set(
 		queue.map((position) => getPositionKey(position.row, position.col)),
 	);
 	let queueIndex = 0;
-	const opponentPlayer: PlayerId = currentPlayer === "p1" ? "p2" : "p1";
+	let explosionCount = 0;
+	const seen = new Set<string>();
+
+	function boardKey() {
+		const parts: string[] = [];
+		for (let row = 0; row < rows; row += 1) {
+			for (let col = 0; col < cols; col += 1) {
+				const cell = board[row][col];
+				parts.push(`${cell.owner ?? "n"}${cell.count}`);
+			}
+		}
+		return parts.join("|");
+	}
+
+	function pendingQueueKey() {
+		return queue
+			.slice(queueIndex)
+			.map((position) => getPositionKey(position.row, position.col))
+			.join(",");
+	}
+
+	function resolutionKey() {
+		return `${boardKey()}#${pendingQueueKey()}`;
+	}
+
+	seen.add(resolutionKey());
 
 	function enqueue(row: number, col: number) {
 		const key = getPositionKey(row, col);
 		if (queued.has(key)) return;
 		queued.add(key);
 		queue.push({ row, col });
-	}
-
-	function hasWinnerDuringResolution() {
-		if (!allPlayersHavePlayed({ hasPlayed })) return false;
-		return countPlayerOrbs(board, opponentPlayer) === 0;
 	}
 
 	while (queueIndex < queue.length) {
@@ -241,6 +296,7 @@ function resolveBoard(
 		const cell = board[current.row][current.col];
 		const capacity = getCapacity(current.row, current.col, rows, cols);
 		if (cell.count < capacity) continue;
+		explosionCount += 1;
 
 		events.push({
 			type: "explode",
@@ -279,12 +335,23 @@ function resolveBoard(
 			enqueue(current.row, current.col);
 		}
 
-		if (hasWinnerDuringResolution()) {
-			return true;
+		if (explosionCount >= MAX_RESOLUTION_STEPS) {
+			return { didLoop: true, winner: null };
+		}
+
+		const nextKey = resolutionKey();
+		if (seen.has(nextKey)) {
+			return { didLoop: true, winner: null };
+		}
+		seen.add(nextKey);
+
+		const winner = getResolvedWinnerFromBoard(board, hasPlayed, playerCount);
+		if (winner) {
+			return { didLoop: false, winner };
 		}
 	}
 
-	return false;
+	return { didLoop: false, winner: null };
 }
 
 export function applyMove(
@@ -320,19 +387,69 @@ export function applyMove(
 		queue.push({ row, col });
 	}
 
-	const endedByElimination = resolveBoard(
+	const resolution = resolveBoard(
 		board,
 		state.rows,
 		state.cols,
 		state.currentPlayer,
+		state.playerCount,
 		hasPlayed,
 		queue,
 		events,
 	);
 
-	const eliminated = recomputeEliminations({ board, hasPlayed });
-	const winner = recomputeWinner({ board, eliminated, hasPlayed });
-	const resolvedWinner = endedByElimination ? state.currentPlayer : winner;
+	if (resolution.didLoop) {
+		return {
+			state: {
+				...state,
+				board,
+				turnNumber: state.turnNumber + 1,
+				hasPlayed,
+				eliminated: createPlayerFlags(false),
+				winner: null,
+				isDraw: true,
+				drawReason: "unstableLoop",
+				phase: "gameOver",
+			},
+			events: [],
+		};
+	}
+
+	if (resolution.winner) {
+		const eliminated = recomputeEliminations({
+			board,
+			hasPlayed,
+			playerCount: state.playerCount,
+		});
+
+		return {
+			state: {
+				...state,
+				board,
+				turnNumber: state.turnNumber + 1,
+				hasPlayed,
+				eliminated,
+				winner: resolution.winner,
+				isDraw: false,
+				drawReason: null,
+				currentPlayer: state.currentPlayer,
+				phase: "gameOver",
+			},
+			events,
+		};
+	}
+
+	const eliminated = recomputeEliminations({
+		board,
+		hasPlayed,
+		playerCount: state.playerCount,
+	});
+	const resolvedWinner = recomputeWinner({
+		board,
+		eliminated,
+		hasPlayed,
+		playerCount: state.playerCount,
+	});
 
 	const nextState: GameState = {
 		...state,
@@ -341,9 +458,15 @@ export function applyMove(
 		hasPlayed,
 		eliminated,
 		winner: resolvedWinner,
+		isDraw: false,
+		drawReason: null,
 		currentPlayer: resolvedWinner
 			? state.currentPlayer
-			: getNextPlayer({ currentPlayer: state.currentPlayer, eliminated }),
+			: getNextPlayer({
+					currentPlayer: state.currentPlayer,
+					eliminated,
+					playerCount: state.playerCount,
+				}),
 		phase: resolvedWinner ? "gameOver" : "idle",
 	};
 

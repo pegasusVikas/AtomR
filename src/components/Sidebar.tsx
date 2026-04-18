@@ -62,32 +62,13 @@ export default function Sidebar() {
 
 	return (
 		<aside
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				width: 220,
-				height: "100dvh",
-				zIndex: 40,
-				display: "flex",
-				flexDirection: "column",
-				background: "rgba(7,7,11,0.98)",
-				borderRight: "1px solid rgba(255,255,255,0.07)",
-				fontFamily: F,
-			}}
+			className="fixed top-0 left-0 z-40 flex h-dvh w-[220px] flex-col border-r border-white/[0.07] bg-[rgba(7,7,11,0.98)] max-[960px]:sticky max-[960px]:h-auto max-[960px]:w-full max-[960px]:border-r-0 max-[960px]:border-b max-[960px]:backdrop-blur-xl"
+			style={{ fontFamily: F }}
 		>
 			{/* Brand */}
 			<Link
 				to="/"
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: 10,
-					padding: "20px 18px 18px",
-					textDecoration: "none",
-					borderBottom: "1px solid rgba(255,255,255,0.05)",
-					flexShrink: 0,
-				}}
+				className="flex shrink-0 items-center gap-2.5 border-b border-white/[0.05] px-[18px] pt-5 pb-[18px] no-underline max-[960px]:px-4 max-[960px]:py-4"
 			>
 				<AtomIcon />
 				<span
@@ -104,33 +85,18 @@ export default function Sidebar() {
 			</Link>
 
 			{/* Nav */}
-			<nav
-				style={{
-					flex: 1,
-					padding: "10px 10px",
-					display: "flex",
-					flexDirection: "column",
-					gap: 2,
-					overflowY: "auto",
-				}}
-			>
+			<nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-2.5 max-[960px]:flex-none max-[960px]:flex-row max-[960px]:gap-2 max-[960px]:overflow-x-auto max-[960px]:overflow-y-hidden max-[960px]:px-4 max-[960px]:py-3">
 				{NAV_ITEMS.map(({ to, label, icon: Icon, exact }) => {
 					const isActive = exact ? pathname === to : pathname.startsWith(to);
 					return (
 						<Link
 							key={to}
 							to={to}
+							className="flex shrink-0 items-center gap-2.5 rounded-[10px] px-3 py-[9px] no-underline transition-[color,background] duration-150 max-[960px]:whitespace-nowrap"
 							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: 10,
-								padding: "9px 12px",
-								borderRadius: 10,
-								textDecoration: "none",
 								fontSize: 13,
 								fontWeight: 600,
 								letterSpacing: "0.04em",
-								transition: "color 0.15s, background 0.15s",
 								color: isActive ? "white" : "rgba(255,255,255,0.42)",
 								background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
 							}}
@@ -151,24 +117,12 @@ export default function Sidebar() {
 			</nav>
 
 			{/* Auth */}
-			<div
-				style={{
-					padding: "12px 12px",
-					borderTop: "1px solid rgba(255,255,255,0.06)",
-					flexShrink: 0,
-				}}
-			>
+			<div className="shrink-0 border-t border-white/[0.06] px-3 py-3 max-[960px]:px-4">
 				{isPending ? (
-					<div
-						style={{
-							height: 36,
-							borderRadius: 10,
-							background: "rgba(255,255,255,0.04)",
-						}}
-					/>
+					<div className="h-9 rounded-[10px] bg-white/[0.04]" />
 				) : session?.user ? (
-					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-						<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+					<div className="flex flex-col gap-2 max-[960px]:gap-3">
+						<div className="flex items-center gap-2">
 							<div
 								style={{
 									width: 28,
@@ -205,7 +159,7 @@ export default function Sidebar() {
 									</span>
 								)}
 							</div>
-							<div style={{ minWidth: 0 }}>
+							<div style={{ minWidth: 0, flex: 1 }}>
 								<div
 									style={{
 										fontSize: 12,
@@ -225,6 +179,7 @@ export default function Sidebar() {
 										overflow: "hidden",
 										textOverflow: "ellipsis",
 										whiteSpace: "nowrap",
+										display: "block",
 									}}
 								>
 									{session.user.email}
@@ -242,6 +197,7 @@ export default function Sidebar() {
 								});
 								window.location.href = "/";
 							}}
+							className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] max-[960px]:w-auto max-[960px]:self-start max-[960px]:px-4"
 							style={{
 								padding: "7px 0",
 								background: "rgba(255,255,255,0.04)",
@@ -254,7 +210,6 @@ export default function Sidebar() {
 								textTransform: "uppercase",
 								cursor: "pointer",
 								fontFamily: F,
-								width: "100%",
 							}}
 						>
 							Sign Out
@@ -263,15 +218,9 @@ export default function Sidebar() {
 				) : (
 					<Link
 						to="/sign-in"
+						className="block rounded-[10px] border border-[rgba(224,92,58,0.22)] bg-[rgba(224,92,58,0.08)] px-4 py-[9px] text-center no-underline max-[960px]:inline-block"
 						style={{
-							display: "block",
-							textAlign: "center",
-							padding: "9px 0",
-							background: "rgba(224,92,58,0.08)",
-							border: "1px solid rgba(224,92,58,0.22)",
-							borderRadius: 10,
 							color: "rgba(255,255,255,0.65)",
-							textDecoration: "none",
 							fontSize: 11,
 							fontWeight: 700,
 							letterSpacing: "0.12em",

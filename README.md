@@ -9,6 +9,9 @@ pnpm install
 pnpm dev
 ```
 
+`pnpm dev` starts both the Convex dev loop and the Vite frontend.
+On the first run, `convex dev` may still prompt you to choose or create a development deployment.
+
 # Building For Production
 
 To build this application for production:
@@ -53,7 +56,7 @@ pnpm check
 ## Setting up Convex
 
 - Set the `VITE_CONVEX_URL` and `CONVEX_DEPLOYMENT` environment variables in your `.env.local`. (Or run `pnpm dlx convex init` to set them automatically.)
-- Run `pnpm dlx convex dev` to start the Convex server.
+- Run `pnpm dev` for the normal local workflow, or `pnpm dev:backend` if you only want the Convex dev loop.
 
 
 ## Shadcn

@@ -4,15 +4,13 @@ import {
 	redirect,
 	useNavigate,
 } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "#/lib/auth-client";
+import { type AuthModes, getAuthModesFn } from "#/lib/auth-mode-fns";
 import { getSessionFn } from "#/lib/session-fns";
 
 export const Route = createFileRoute("/sign-up")({
 	beforeLoad: async () => {
-		if (import.meta.env.PROD) {
-			throw redirect({ to: "/sign-in" });
-		}
 		const session = await getSessionFn();
 		if (session?.user) {
 			throw redirect({ to: "/play" });
@@ -92,11 +90,62 @@ const labelStyle: React.CSSProperties = {
 
 function SignUpPage() {
 	const navigate = useNavigate();
+	const [authModes, setAuthModes] = useState<AuthModes | null>(null);
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		let cancelled = false;
+		void getAuthModesFn()
+			.then((modes) => {
+				if (!cancelled) {
+					setAuthModes(modes);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setAuthModes({
+						isLocal: false,
+						googleEnabled: false,
+						emailPasswordEnabled: false,
+					});
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	useEffect(() => {
+		if (authModes && !authModes.emailPasswordEnabled) {
+			void navigate({ to: "/sign-in" });
+		}
+	}, [authModes, navigate]);
+
+	if (authModes === null) {
+		return (
+			<div
+				style={{
+					minHeight: "100dvh",
+					background: "#07070b",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					fontFamily: F,
+					color: "rgba(255,255,255,0.45)",
+				}}
+			>
+				Loading auth options…
+			</div>
+		);
+	}
+
+	if (!authModes.emailPasswordEnabled) {
+		return null;
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();

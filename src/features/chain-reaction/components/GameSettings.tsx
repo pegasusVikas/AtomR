@@ -5,7 +5,16 @@ type GameSettingsProps = {
 	open: boolean;
 	rows: number;
 	cols: number;
-	onApply: (rows: number, cols: number) => void;
+	playerCount?: number;
+	playerCountLocked?: boolean;
+	difficulty?: number;
+	difficultyLabel?: string;
+	onApply: (
+		rows: number,
+		cols: number,
+		difficulty?: number,
+		playerCount?: number,
+	) => void;
 	onClose: () => void;
 };
 
@@ -13,19 +22,27 @@ export default function GameSettings({
 	open,
 	rows,
 	cols,
+	playerCount,
+	playerCountLocked = true,
+	difficulty,
+	difficultyLabel,
 	onApply,
 	onClose,
 }: GameSettingsProps) {
 	const [localRows, setLocalRows] = useState(rows);
 	const [localCols, setLocalCols] = useState(cols);
+	const [localPlayerCount, setLocalPlayerCount] = useState(playerCount ?? 2);
+	const [localDifficulty, setLocalDifficulty] = useState(difficulty ?? 5);
 
 	// Sync local state when modal opens
 	useEffect(() => {
 		if (open) {
 			setLocalRows(rows);
 			setLocalCols(cols);
+			setLocalPlayerCount(playerCount ?? 2);
+			setLocalDifficulty(difficulty ?? 5);
 		}
-	}, [open, rows, cols]);
+	}, [open, rows, cols, playerCount, difficulty]);
 
 	// Escape key to dismiss
 	useEffect(() => {
@@ -159,27 +176,104 @@ export default function GameSettings({
 						</div>
 					</div>
 
-					{/* Players — display only */}
-					<div
-						className="flex items-center justify-between"
-						style={{ opacity: 0.32 }}
-					>
-						<span style={labelStyle}>players</span>
-						<div className="flex items-center gap-2">
-							<span style={valueStyle}>2</span>
-							<span
+					{playerCount !== undefined ? (
+						playerCountLocked ? (
+							<div
+								className="flex items-center justify-between"
+								style={{ opacity: 0.32 }}
+							>
+								<span style={labelStyle}>players</span>
+								<div className="flex items-center gap-2">
+									<span style={valueStyle}>{localPlayerCount}</span>
+									<span
+										style={{
+											fontFamily: "'Oxanium', sans-serif",
+											fontSize: "8px",
+											color: "rgba(255,255,255,0.4)",
+											textTransform: "uppercase",
+											letterSpacing: "0.2em",
+										}}
+									>
+										only
+									</span>
+								</div>
+							</div>
+						) : (
+							<div className="flex flex-col gap-2">
+								<div className="flex items-center justify-between">
+									<span style={labelStyle}>players</span>
+									<span style={valueStyle}>{localPlayerCount}</span>
+								</div>
+								<input
+									type="range"
+									min={2}
+									max={8}
+									value={localPlayerCount}
+									onChange={(e) => setLocalPlayerCount(Number(e.target.value))}
+									className="w-full cursor-pointer appearance-none rounded-full"
+									style={{
+										accentColor: "rgba(255,255,255,0.7)",
+										height: "4px",
+									}}
+								/>
+								<div
+									className="flex justify-between"
+									style={{
+										fontFamily: "'JetBrains Mono', monospace",
+										fontSize: "8px",
+										color: "rgba(255,255,255,0.15)",
+									}}
+								>
+									<span>2</span>
+									<span>8</span>
+								</div>
+							</div>
+						)
+					) : null}
+
+					{difficulty !== undefined ? (
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center justify-between">
+								<span style={labelStyle}>cpu difficulty</span>
+								<div className="flex items-center gap-2">
+									<span style={valueStyle}>{localDifficulty}</span>
+									{difficultyLabel ? (
+										<span
+											style={{
+												fontFamily: "'Oxanium', sans-serif",
+												fontSize: "8px",
+												color: "rgba(255,255,255,0.4)",
+												textTransform: "uppercase",
+												letterSpacing: "0.2em",
+											}}
+										>
+											{difficultyLabel}
+										</span>
+									) : null}
+								</div>
+							</div>
+							<input
+								type="range"
+								min={1}
+								max={10}
+								value={localDifficulty}
+								onChange={(e) => setLocalDifficulty(Number(e.target.value))}
+								className="w-full cursor-pointer appearance-none rounded-full"
+								style={{ accentColor: "oklch(0.78 0.16 210)", height: "4px" }}
+							/>
+							<div
+								className="flex justify-between"
 								style={{
-									fontFamily: "'Oxanium', sans-serif",
+									fontFamily: "'JetBrains Mono', monospace",
 									fontSize: "8px",
-									color: "rgba(255,255,255,0.4)",
-									textTransform: "uppercase",
-									letterSpacing: "0.2em",
+									color: "rgba(255,255,255,0.15)",
 								}}
 							>
-								only
-							</span>
+								<span>1</span>
+								<span>10</span>
+							</div>
 						</div>
-					</div>
+					) : null}
 
 					{/* Recommended size */}
 					<button
@@ -206,7 +300,7 @@ export default function GameSettings({
 					<button
 						type="button"
 						onClick={() => {
-							onApply(localRows, localCols);
+							onApply(localRows, localCols, localDifficulty, localPlayerCount);
 							onClose();
 						}}
 						className="rounded-full py-3 transition-transform hover:scale-[1.02] active:scale-[0.97]"

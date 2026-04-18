@@ -1,6 +1,30 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
+const playerId = v.union(
+	v.literal('p1'),
+	v.literal('p2'),
+	v.literal('p3'),
+	v.literal('p4'),
+	v.literal('p5'),
+	v.literal('p6'),
+	v.literal('p7'),
+	v.literal('p8'),
+)
+
+const nullablePlayerId = v.union(playerId, v.null())
+
+const playerFlags = v.object({
+	p1: v.boolean(),
+	p2: v.boolean(),
+	p3: v.boolean(),
+	p4: v.boolean(),
+	p5: v.boolean(),
+	p6: v.boolean(),
+	p7: v.boolean(),
+	p8: v.boolean(),
+})
+
 export default defineSchema({
 	users: defineTable({
 		authUserId: v.string(),
@@ -47,25 +71,20 @@ export default defineSchema({
 		player2UserId: v.id('users'),
 		rows: v.number(),
 		cols: v.number(),
+		playerCount: v.number(),
 		board: v.array(
 			v.array(
 				v.object({
-					owner: v.union(v.literal('p1'), v.literal('p2'), v.null()),
+					owner: nullablePlayerId,
 					count: v.number(),
 				}),
 			),
 		),
-		currentPlayer: v.union(v.literal('p1'), v.literal('p2')),
+		currentPlayer: playerId,
 		turnNumber: v.number(),
-		hasPlayed: v.object({
-			p1: v.boolean(),
-			p2: v.boolean(),
-		}),
-		eliminated: v.object({
-			p1: v.boolean(),
-			p2: v.boolean(),
-		}),
-		winner: v.union(v.literal('p1'), v.literal('p2'), v.null()),
+		hasPlayed: playerFlags,
+		eliminated: playerFlags,
+		winner: nullablePlayerId,
 		phase: v.union(
 			v.literal('idle'),
 			v.literal('resolving'),
@@ -79,13 +98,13 @@ export default defineSchema({
 						type: v.literal('place'),
 						row: v.number(),
 						col: v.number(),
-						player: v.union(v.literal('p1'), v.literal('p2')),
+						player: playerId,
 					}),
 					v.object({
 						type: v.literal('explode'),
 						row: v.number(),
 						col: v.number(),
-						player: v.union(v.literal('p1'), v.literal('p2')),
+						player: playerId,
 						affected: v.array(
 							v.object({ row: v.number(), col: v.number() }),
 						),
@@ -94,7 +113,7 @@ export default defineSchema({
 						type: v.literal('capture'),
 						row: v.number(),
 						col: v.number(),
-						player: v.union(v.literal('p1'), v.literal('p2')),
+						player: playerId,
 					}),
 				),
 			),
@@ -113,7 +132,7 @@ export default defineSchema({
 		matchId: v.id('matches'),
 		turnNumber: v.number(),
 		userId: v.id('users'),
-		playerId: v.union(v.literal('p1'), v.literal('p2')),
+		playerId: playerId,
 		row: v.number(),
 		col: v.number(),
 		events: v.array(
@@ -122,20 +141,20 @@ export default defineSchema({
 					type: v.literal('place'),
 					row: v.number(),
 					col: v.number(),
-					player: v.union(v.literal('p1'), v.literal('p2')),
+					player: playerId,
 				}),
 				v.object({
 					type: v.literal('explode'),
 					row: v.number(),
 					col: v.number(),
-					player: v.union(v.literal('p1'), v.literal('p2')),
+					player: playerId,
 					affected: v.array(v.object({ row: v.number(), col: v.number() })),
 				}),
 				v.object({
 					type: v.literal('capture'),
 					row: v.number(),
 					col: v.number(),
-					player: v.union(v.literal('p1'), v.literal('p2')),
+					player: playerId,
 				}),
 			),
 		),

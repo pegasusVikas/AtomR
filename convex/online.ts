@@ -7,11 +7,16 @@ import {
 	pickRandomLegalMove,
 } from '../src/features/chain-reaction/shared-engine'
 import {
-	ONLINE_QUEUE_STALE_MS,
 	ONLINE_TURN_TIME_LIMIT_MS,
+	createPlayerFlags,
 	type GameState,
 	type PlayerId,
 } from '../src/features/chain-reaction/shared'
+import {
+	evaluateSearchingQueue,
+	isMatchedQueueEntryObsolete as isMatchedQueueEntryObsoleteRule,
+	isSearchingQueueEntryStale,
+} from '../src/features/chain-reaction/onlineMatchmaking'
 
 function getOpponentPlayer(playerId: PlayerId): PlayerId {
 	return playerId === 'p1' ? 'p2' : 'p1'
@@ -21,23 +26,77 @@ function getPlayerUserId(match: any, playerId: PlayerId) {
 	return playerId === 'p1' ? match.player1UserId : match.player2UserId
 }
 
+function toStoredPlayerFlags(flags: any) {
+	const defaults = createPlayerFlags(false)
+	return {
+		p1: flags.p1 ?? defaults.p1 ?? false,
+		p2: flags.p2 ?? defaults.p2 ?? false,
+		p3: flags.p3 ?? defaults.p3 ?? false,
+		p4: flags.p4 ?? defaults.p4 ?? false,
+		p5: flags.p5 ?? defaults.p5 ?? false,
+		p6: flags.p6 ?? defaults.p6 ?? false,
+		p7: flags.p7 ?? defaults.p7 ?? false,
+		p8: flags.p8 ?? defaults.p8 ?? false,
+	}
+}
+
 function toGameState(match: any): GameState {
 	return {
 		board: match.board,
 		rows: match.rows,
 		cols: match.cols,
+		playerCount: match.playerCount ?? 2,
 		currentPlayer: match.currentPlayer,
 		turnNumber: match.turnNumber,
 		hasPlayed: match.hasPlayed,
 		eliminated: match.eliminated,
 		winner: match.winner,
+		isDraw: false,
+		drawReason: null,
 		phase: match.phase === 'gameOver' ? 'gameOver' : 'idle',
 	}
 }
 
-function isSearchingQueueEntryStale(now: number, entry: any, user: any) {
-	if (!user) return true
-	return now - Math.max(entry.requestedAt, user.lastSeenAt) > ONLINE_QUEUE_STALE_MS
+async function findFreshSearchingOpponent(
+	ctx: any,
+	{
+		excludeUserId,
+		now,
+	}: {
+		excludeUserId: any
+		now: number
+	},
+) {
+	const searchingEntries = await ctx.db
+		.query('matchmakingQueue')
+		.withIndex('by_status_requested_at', (q: any) => q.eq('status', 'searching'))
+		.collect()
+
+	const usersById = new Map()
+	for (const entry of searchingEntries) {
+		if (entry.userId === excludeUserId || usersById.has(entry.userId)) continue
+		usersById.set(entry.userId, await ctx.db.get(entry.userId))
+	}
+
+	const { opponent, staleEntryIds } = evaluateSearchingQueue(
+		now,
+		searchingEntries,
+		usersById,
+		excludeUserId,
+	)
+
+	for (const staleEntryId of staleEntryIds) {
+		await ctx.db.patch(staleEntryId, { status: 'cancelled' })
+	}
+
+	return opponent
+}
+
+async function isMatchedQueueEntryObsolete(ctx: any, entry: any, viewer: any) {
+	if (!entry.matchId) return true
+
+	const match = await ctx.db.get(entry.matchId)
+	return isMatchedQueueEntryObsoleteRule(entry, viewer, match)
 }
 
 function alphabet() {
@@ -87,8 +146,14 @@ async function cleanupStaleQueueEntries(ctx: any, now = Date.now()) {
 		.withIndex('by_status_requested_at', (q: any) => q.eq('status', 'searching'))
 		.collect()
 
+	const usersById = new Map()
 	for (const entry of searchingEntries) {
-		const user = await ctx.db.get(entry.userId)
+		if (usersById.has(entry.userId)) continue
+		usersById.set(entry.userId, await ctx.db.get(entry.userId))
+	}
+
+	for (const entry of searchingEntries) {
+		const user = usersById.get(entry.userId) ?? null
 		if (isSearchingQueueEntryStale(now, entry, user)) {
 			await ctx.db.patch(entry._id, { status: 'cancelled' })
 		}
@@ -133,10 +198,11 @@ async function persistResolvedMove(
 ) {
 	await ctx.db.patch(match._id, {
 		board: result.state.board,
+		playerCount: result.state.playerCount,
 		currentPlayer: result.state.currentPlayer,
 		turnNumber: result.state.turnNumber,
-		hasPlayed: result.state.hasPlayed,
-		eliminated: result.state.eliminated,
+		hasPlayed: toStoredPlayerFlags(result.state.hasPlayed),
+		eliminated: toStoredPlayerFlags(result.state.eliminated),
 		winner: result.state.winner,
 		phase: result.state.phase,
 		lastMoveEvents: result.events,
@@ -316,7 +382,7 @@ export const joinPrivateRoom = mutation({
 			return { roomId: room._id, matchId: room.matchId ?? null, code: room.code }
 		}
 
-		const initialState = createInitialGameState(room.rows, room.cols)
+		const initialState = createInitialGameState(room.rows, room.cols, 2)
 		const now = Date.now()
 		const matchId = await ctx.db.insert('matches', {
 			type: 'private',
@@ -325,11 +391,12 @@ export const joinPrivateRoom = mutation({
 			player2UserId: guestUserId,
 			rows: room.rows,
 			cols: room.cols,
+			playerCount: initialState.playerCount,
 			board: initialState.board,
 			currentPlayer: initialState.currentPlayer,
 			turnNumber: initialState.turnNumber,
-			hasPlayed: initialState.hasPlayed,
-			eliminated: initialState.eliminated,
+			hasPlayed: toStoredPlayerFlags(initialState.hasPlayed),
+			eliminated: toStoredPlayerFlags(initialState.eliminated),
 			winner: initialState.winner,
 			phase: initialState.phase,
 			lastMoveEvents: [],
@@ -380,25 +447,25 @@ export const joinQueue = mutation({
 			return { queueId: existing._id, status: 'searching' as const, matchId: null }
 		}
 
-		const searchingEntries = await ctx.db
-			.query('matchmakingQueue')
-			.withIndex('by_status_requested_at', (q) => q.eq('status', 'searching'))
-			.collect()
-		const opponent = searchingEntries.find((entry: any) => entry.userId !== userId)
+		const opponent = await findFreshSearchingOpponent(ctx, {
+			excludeUserId: userId,
+			now,
+		})
 
 		if (opponent) {
-			const initialState = createInitialGameState(6, 9)
+			const initialState = createInitialGameState(6, 9, 2)
 			const matchId = await ctx.db.insert('matches', {
 				type: 'public',
-				player1UserId: opponent.userId,
+				player1UserId: opponent.userId as any,
 				player2UserId: userId,
 				rows: 6,
 				cols: 9,
+				playerCount: initialState.playerCount,
 				board: initialState.board,
 				currentPlayer: initialState.currentPlayer,
 				turnNumber: initialState.turnNumber,
-				hasPlayed: initialState.hasPlayed,
-				eliminated: initialState.eliminated,
+				hasPlayed: toStoredPlayerFlags(initialState.hasPlayed),
+				eliminated: toStoredPlayerFlags(initialState.eliminated),
 				winner: initialState.winner,
 				phase: initialState.phase,
 				lastMoveEvents: [],
@@ -414,7 +481,7 @@ export const joinQueue = mutation({
 				expectedLastMoveAt: now,
 			})
 
-			await ctx.db.patch(opponent._id, { status: 'matched', matchId })
+			await ctx.db.patch(opponent._id as any, { status: 'matched', matchId })
 			const queueId = await ctx.db.insert('matchmakingQueue', {
 				userId,
 				status: 'matched',
@@ -478,6 +545,12 @@ export const getMyQueueEntry = query({
 		) {
 			return null
 		}
+		if (
+			entry.status === 'matched' &&
+			(await isMatchedQueueEntryObsolete(ctx, entry, viewer))
+		) {
+			return null
+		}
 		return entry
 	},
 })
@@ -507,7 +580,7 @@ export const startRematch = mutation({
 			return { matchId: match.rematchMatchId }
 		}
 
-		const initialState = createInitialGameState(match.rows, match.cols)
+		const initialState = createInitialGameState(match.rows, match.cols, 2)
 		const now = Date.now()
 		const newMatchId = await ctx.db.insert('matches', {
 			type: match.type,
@@ -516,11 +589,12 @@ export const startRematch = mutation({
 			player2UserId: match.player1UserId,
 			rows: match.rows,
 			cols: match.cols,
+			playerCount: initialState.playerCount,
 			board: initialState.board,
 			currentPlayer: initialState.currentPlayer,
 			turnNumber: initialState.turnNumber,
-			hasPlayed: initialState.hasPlayed,
-			eliminated: initialState.eliminated,
+			hasPlayed: toStoredPlayerFlags(initialState.hasPlayed),
+			eliminated: toStoredPlayerFlags(initialState.eliminated),
 			winner: initialState.winner,
 			phase: initialState.phase,
 			lastMoveEvents: [],

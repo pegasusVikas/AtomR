@@ -1,11 +1,12 @@
 import { PLAYER_COLORS, PLAYER_NAMES } from "../constants";
-import type { GameState } from "../types";
+import type { GameState, PlayerId } from "../types";
 
 type GameOverlayProps = {
 	state: GameState;
 	onReset: () => void;
 	resetLabel?: string;
 	resetPending?: boolean;
+	playerNames?: Partial<Record<PlayerId, string>>;
 };
 
 export default function GameOverlay({
@@ -13,12 +14,19 @@ export default function GameOverlay({
 	onReset,
 	resetLabel = "play again",
 	resetPending = false,
+	playerNames,
 }: GameOverlayProps) {
-	if (!state.winner) {
+	if (!state.winner && !state.isDraw) {
 		return null;
 	}
 
-	const winnerColor = PLAYER_COLORS[state.winner];
+	const winnerColor = state.winner
+		? PLAYER_COLORS[state.winner]
+		: "rgba(255,255,255,0.82)";
+	const winnerName = state.winner
+		? (playerNames?.[state.winner] ?? PLAYER_NAMES[state.winner])
+		: "Draw";
+	const resultLabel = state.winner ? "wins" : "unstable loop";
 
 	return (
 		<div
@@ -50,16 +58,18 @@ export default function GameOverlay({
 							textShadow: `0 0 40px ${winnerColor}55`,
 						}}
 					>
-						{PLAYER_NAMES[state.winner]}
+						{winnerName}
 					</span>
 					<span
 						className="text-sm font-medium uppercase tracking-[0.5em]"
 						style={{
 							fontFamily: "'Oxanium', sans-serif",
-							color: `color-mix(in srgb, ${winnerColor} 70%, rgba(255,255,255,0.3))`,
+							color: state.winner
+								? `color-mix(in srgb, ${winnerColor} 70%, rgba(255,255,255,0.3))`
+								: "rgba(255,255,255,0.38)",
 						}}
 					>
-						wins
+						{resultLabel}
 					</span>
 				</div>
 

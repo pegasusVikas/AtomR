@@ -37,6 +37,53 @@ const STEPS = [
 	},
 ];
 
+const GAME_MODES = [
+	{
+		label: "COACH",
+		title: "Training Mode",
+		description:
+			"Learn with a live ghost recommendation on every turn, powered by the same engine as CPU play.",
+		href: "/play/training" as const,
+		accent: "rgba(120,192,255,0.7)",
+		border: "rgba(120,192,255,0.22)",
+		background: "rgba(120,192,255,0.055)",
+		cta: "START TRAINING →",
+	},
+	{
+		label: "SOLO",
+		title: "AI Game",
+		description:
+			"Play against a CPU opponent with adjustable difficulty and the same chain-reaction board.",
+		href: "/play/ai" as const,
+		accent: "rgba(186,132,255,0.72)",
+		border: "rgba(186,132,255,0.24)",
+		background: "rgba(186,132,255,0.055)",
+		cta: "PLAY CPU →",
+	},
+	{
+		label: "OFFLINE",
+		title: "Local Game",
+		description:
+			"Pass-and-play on one device. Choose your board size and challenge a friend locally.",
+		href: "/play/local" as const,
+		accent: "rgba(255,255,255,0.35)",
+		border: "rgba(255,255,255,0.08)",
+		background: "rgba(255,255,255,0.025)",
+		cta: "PLAY LOCAL →",
+	},
+	{
+		label: "REALTIME",
+		title: "Online Game",
+		description:
+			"Sign in and play against anyone, anywhere. Quick match or invite a friend to a private room.",
+		href: "/play/online" as const,
+		accent: "rgba(224,92,58,0.7)",
+		border: "rgba(224,92,58,0.22)",
+		background: "rgba(224,92,58,0.055)",
+		cta: "PLAY ONLINE →",
+	},
+] as const;
+
 const F = "'Oxanium', 'Segoe UI', sans-serif";
 
 function HomePage() {
@@ -320,127 +367,67 @@ function HomePage() {
 							gap: 16,
 						}}
 					>
-						{/* Local */}
-						<Link
-							to="/play/local"
-							style={{ textDecoration: "none", display: "block" }}
-						>
-							<div
-								style={{
-									padding: "34px 30px",
-									border: "1px solid rgba(255,255,255,0.08)",
-									borderRadius: 24,
-									background: "rgba(255,255,255,0.025)",
-									height: "100%",
-									boxSizing: "border-box",
-								}}
+						{GAME_MODES.map((mode) => (
+							<Link
+								key={mode.href}
+								to={mode.href}
+								style={{ textDecoration: "none", display: "block" }}
 							>
 								<div
 									style={{
-										fontSize: 11,
-										letterSpacing: "0.35em",
-										textTransform: "uppercase",
-										color: "rgba(255,255,255,0.25)",
-										marginBottom: 18,
+										padding: "34px 30px",
+										border: `1px solid ${mode.border}`,
+										borderRadius: 24,
+										background: mode.background,
+										height: "100%",
+										boxSizing: "border-box",
 									}}
 								>
-									OFFLINE
+									<div
+										style={{
+											fontSize: 11,
+											letterSpacing: "0.35em",
+											textTransform: "uppercase",
+											color: "rgba(255,255,255,0.25)",
+											marginBottom: 18,
+										}}
+									>
+										{mode.label}
+									</div>
+									<div
+										style={{
+											fontSize: 22,
+											fontWeight: 700,
+											color: "white",
+											marginBottom: 12,
+										}}
+									>
+										{mode.title}
+									</div>
+									<p
+										style={{
+											fontSize: 14,
+											color: "rgba(255,255,255,0.42)",
+											lineHeight: 1.7,
+											margin: "0 0 24px",
+										}}
+									>
+										{mode.description}
+									</p>
+									<span
+										style={{
+											fontSize: 12,
+											fontWeight: 600,
+											letterSpacing: "0.08em",
+											textTransform: "uppercase",
+											color: mode.accent,
+										}}
+									>
+										{mode.cta}
+									</span>
 								</div>
-								<div
-									style={{
-										fontSize: 22,
-										fontWeight: 700,
-										color: "white",
-										marginBottom: 12,
-									}}
-								>
-									Local Game
-								</div>
-								<p
-									style={{
-										fontSize: 14,
-										color: "rgba(255,255,255,0.42)",
-										lineHeight: 1.7,
-										margin: "0 0 24px",
-									}}
-								>
-									Pass-and-play on one device. Choose your board size and
-									challenge a friend locally.
-								</p>
-								<span
-									style={{
-										fontSize: 12,
-										fontWeight: 600,
-										letterSpacing: "0.08em",
-										textTransform: "uppercase",
-										color: "rgba(255,255,255,0.35)",
-									}}
-								>
-									PLAY LOCAL →
-								</span>
-							</div>
-						</Link>
-
-						{/* Online */}
-						<Link
-							to="/play/online"
-							style={{ textDecoration: "none", display: "block" }}
-						>
-							<div
-								style={{
-									padding: "34px 30px",
-									border: "1px solid rgba(224,92,58,0.22)",
-									borderRadius: 24,
-									background: "rgba(224,92,58,0.055)",
-									height: "100%",
-									boxSizing: "border-box",
-								}}
-							>
-								<div
-									style={{
-										fontSize: 11,
-										letterSpacing: "0.35em",
-										textTransform: "uppercase",
-										color: "rgba(255,255,255,0.25)",
-										marginBottom: 18,
-									}}
-								>
-									REALTIME
-								</div>
-								<div
-									style={{
-										fontSize: 22,
-										fontWeight: 700,
-										color: "white",
-										marginBottom: 12,
-									}}
-								>
-									Online Game
-								</div>
-								<p
-									style={{
-										fontSize: 14,
-										color: "rgba(255,255,255,0.42)",
-										lineHeight: 1.7,
-										margin: "0 0 24px",
-									}}
-								>
-									Sign in and play against anyone, anywhere. Quick match or
-									invite a friend to a private room.
-								</p>
-								<span
-									style={{
-										fontSize: 12,
-										fontWeight: 600,
-										letterSpacing: "0.08em",
-										textTransform: "uppercase",
-										color: "rgba(224,92,58,0.7)",
-									}}
-								>
-									PLAY ONLINE →
-								</span>
-							</div>
-						</Link>
+							</Link>
+						))}
 					</div>
 				</section>
 			</div>

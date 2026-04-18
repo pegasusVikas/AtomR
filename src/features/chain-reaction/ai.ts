@@ -1,0 +1,352 @@
+import { applyMove, getCapacity, getLegalMoves } from "./engine";
+import type { GameState, PlayerId, Position } from "./types";
+
+export type AiConfig = {
+	depth: number;
+	candidateLimit: number;
+	mistakeProbability: number;
+	softmaxTemperature: number;
+	thinkDelayMs: number;
+};
+
+type MoveSelectionOptions = {
+	allowMistakes: boolean;
+	maxNodes?: number;
+	maxThinkMs?: number;
+};
+
+type SearchControl = {
+	nodes: number;
+	exhausted: boolean;
+	maxNodes?: number;
+	deadlineAt?: number;
+};
+
+function opponentOf(player: PlayerId): PlayerId {
+	return player === "p1" ? "p2" : "p1";
+}
+
+function isCorner(row: number, col: number, rows: number, cols: number) {
+	return (row === 0 || row === rows - 1) && (col === 0 || col === cols - 1);
+}
+
+function isEdge(row: number, col: number, rows: number, cols: number) {
+	return row === 0 || row === rows - 1 || col === 0 || col === cols - 1;
+}
+
+function evaluateState(state: GameState, perspective: PlayerId): number {
+	if (state.isDraw) return 0;
+	if (state.winner === perspective) return 1_000_000;
+	if (state.winner === opponentOf(perspective)) return -1_000_000;
+
+	let total = 0;
+	const opponent = opponentOf(perspective);
+
+	for (let row = 0; row < state.rows; row += 1) {
+		for (let col = 0; col < state.cols; col += 1) {
+			const cell = state.board[row][col];
+			if (!cell.owner || cell.count === 0) continue;
+
+			const sign = cell.owner === perspective ? 1 : -1;
+			const capacity = getCapacity(row, col, state.rows, state.cols);
+			const critical = cell.count === capacity - 1;
+
+			let positional = 0;
+			if (isCorner(row, col, state.rows, state.cols)) positional = 8;
+			else if (isEdge(row, col, state.rows, state.cols)) positional = 3;
+
+			total += sign * (cell.count * 6 + positional + (critical ? 9 : 0));
+
+			if (!critical) continue;
+
+			const neighbors = [
+				[row - 1, col],
+				[row + 1, col],
+				[row, col - 1],
+				[row, col + 1],
+			] as const;
+
+			for (const [nr, nc] of neighbors) {
+				if (nr < 0 || nc < 0 || nr >= state.rows || nc >= state.cols) continue;
+				const neighbor = state.board[nr][nc];
+				if (!neighbor.owner || neighbor.count === 0) continue;
+				if (neighbor.owner === opponent) total += sign * -5;
+			}
+		}
+	}
+
+	return total;
+}
+
+function quickMoveScore(state: GameState, move: Position): number {
+	const { row, col } = move;
+	const cell = state.board[row][col];
+	const capacity = getCapacity(row, col, state.rows, state.cols);
+	const after = cell.count + 1;
+	let score = after * 2;
+
+	if (isCorner(row, col, state.rows, state.cols)) score += 10;
+	else if (isEdge(row, col, state.rows, state.cols)) score += 4;
+
+	if (after >= capacity) score += 20;
+	if (after === capacity - 1) score += 8;
+
+	const neighbors = [
+		[row - 1, col],
+		[row + 1, col],
+		[row, col - 1],
+		[row, col + 1],
+	] as const;
+
+	for (const [nr, nc] of neighbors) {
+		if (nr < 0 || nc < 0 || nr >= state.rows || nc >= state.cols) continue;
+		const neighbor = state.board[nr][nc];
+		if (neighbor.owner && neighbor.owner !== state.currentPlayer) {
+			score += 3;
+			const neighborCapacity = getCapacity(nr, nc, state.rows, state.cols);
+			if (neighbor.count >= neighborCapacity - 1) score += 7;
+		}
+	}
+
+	return score;
+}
+
+function boardKey(state: GameState): string {
+	const parts: string[] = [state.currentPlayer, String(state.turnNumber)];
+
+	for (let row = 0; row < state.rows; row += 1) {
+		for (let col = 0; col < state.cols; col += 1) {
+			const cell = state.board[row][col];
+			parts.push(`${cell.owner ?? "n"}${cell.count}`);
+		}
+	}
+
+	return parts.join("|");
+}
+
+function shouldStopSearch(control: SearchControl): boolean {
+	if (control.exhausted) return true;
+
+	control.nodes += 1;
+
+	if (control.maxNodes !== undefined && control.nodes > control.maxNodes) {
+		control.exhausted = true;
+		return true;
+	}
+
+	if (control.deadlineAt !== undefined && Date.now() >= control.deadlineAt) {
+		control.exhausted = true;
+		return true;
+	}
+
+	return false;
+}
+
+function minimax(
+	state: GameState,
+	depth: number,
+	perspective: PlayerId,
+	alpha: number,
+	beta: number,
+	candidateLimit: number,
+	cache: Map<string, { depth: number; value: number }>,
+	control: SearchControl,
+): number {
+	if (
+		depth <= 0 ||
+		state.winner ||
+		state.phase === "gameOver" ||
+		shouldStopSearch(control)
+	) {
+		return evaluateState(state, perspective);
+	}
+
+	const key = `${depth}:${boardKey(state)}`;
+	const cached = cache.get(key);
+	if (cached && cached.depth >= depth) return cached.value;
+
+	const legalMoves = getLegalMoves(state);
+	if (legalMoves.length === 0) return evaluateState(state, perspective);
+
+	const orderedMoves = legalMoves
+		.map((move) => ({ move, score: quickMoveScore(state, move) }))
+		.sort((a, b) => b.score - a.score)
+		.slice(0, Math.max(1, candidateLimit))
+		.map((item) => item.move);
+
+	const maximizing = state.currentPlayer === perspective;
+	let best = maximizing ? -Infinity : Infinity;
+	let evaluatedAny = false;
+
+	for (const move of orderedMoves) {
+		if (control.exhausted) break;
+		evaluatedAny = true;
+		const next = applyMove(state, move.row, move.col).state;
+		const value = minimax(
+			next,
+			depth - 1,
+			perspective,
+			alpha,
+			beta,
+			candidateLimit,
+			cache,
+			control,
+		);
+
+		if (maximizing) {
+			best = Math.max(best, value);
+			alpha = Math.max(alpha, best);
+			if (alpha >= beta) break;
+		} else {
+			best = Math.min(best, value);
+			beta = Math.min(beta, best);
+			if (alpha >= beta) break;
+		}
+	}
+
+	if (!evaluatedAny) {
+		return evaluateState(state, perspective);
+	}
+
+	cache.set(key, { depth, value: best });
+	return best;
+}
+
+export function configForDifficulty(level: number): AiConfig {
+	const clamped = Math.max(1, Math.min(10, level));
+	const depth = clamped <= 2 ? 1 : clamped <= 5 ? 2 : clamped <= 8 ? 3 : 4;
+	const candidateLimit =
+		clamped <= 2 ? 8 : clamped <= 5 ? 12 : clamped <= 8 ? 14 : 18;
+	const mistakeProbability =
+		clamped <= 2
+			? 0.45
+			: clamped <= 4
+				? 0.25
+				: clamped <= 6
+					? 0.12
+					: clamped <= 8
+						? 0.06
+						: 0.02;
+	const softmaxTemperature =
+		clamped <= 2 ? 2.0 : clamped <= 4 ? 1.0 : clamped <= 7 ? 0.55 : 0.22;
+	const thinkDelayMs = Math.max(120, 420 - clamped * 24);
+
+	return {
+		depth,
+		candidateLimit,
+		mistakeProbability,
+		softmaxTemperature,
+		thinkDelayMs,
+	};
+}
+
+function chooseMoveWithConfig(
+	state: GameState,
+	config: AiConfig,
+	random: () => number,
+	options: MoveSelectionOptions,
+): Position | null {
+	const legalMoves = getLegalMoves(state);
+	if (legalMoves.length === 0) return null;
+
+	if (options.allowMistakes && random() < config.mistakeProbability) {
+		const index = Math.min(
+			legalMoves.length - 1,
+			Math.floor(random() * legalMoves.length),
+		);
+		return legalMoves[index] ?? null;
+	}
+
+	const orderedMoves = legalMoves
+		.map((move) => ({ move, score: quickMoveScore(state, move) }))
+		.sort((a, b) => b.score - a.score)
+		.slice(0, Math.max(1, config.candidateLimit))
+		.map((item) => item.move);
+
+	const cache = new Map<string, { depth: number; value: number }>();
+	const control: SearchControl = {
+		nodes: 0,
+		exhausted: false,
+		maxNodes: options.maxNodes,
+		deadlineAt:
+			options.maxThinkMs !== undefined
+				? Date.now() + options.maxThinkMs
+				: undefined,
+	};
+	let bestScore = -Infinity;
+	const scored: Array<{ move: Position; value: number }> = [];
+
+	for (const move of orderedMoves) {
+		if (control.exhausted && scored.length > 0) break;
+		const next = applyMove(state, move.row, move.col).state;
+		const value = minimax(
+			next,
+			Math.max(0, config.depth - 1),
+			state.currentPlayer,
+			-Infinity,
+			Infinity,
+			config.candidateLimit,
+			cache,
+			control,
+		);
+		scored.push({ move, value });
+		if (value > bestScore) bestScore = value;
+	}
+
+	if (scored.length === 0) {
+		return orderedMoves[0] ?? legalMoves[0] ?? null;
+	}
+
+	const topMoves = scored.filter((item) => item.value >= bestScore - 6);
+	if (topMoves.length <= 1 || config.softmaxTemperature <= 0.01) {
+		return topMoves[0]?.move ?? orderedMoves[0] ?? legalMoves[0] ?? null;
+	}
+
+	const weights = topMoves.map((item) =>
+		Math.exp((item.value - bestScore) / config.softmaxTemperature),
+	);
+	const totalWeight = weights.reduce((acc, weight) => acc + weight, 0);
+	let pick = random() * totalWeight;
+
+	for (let i = 0; i < topMoves.length; i += 1) {
+		pick -= weights[i] ?? 0;
+		if (pick <= 0) return topMoves[i]?.move ?? legalMoves[0] ?? null;
+	}
+
+	return topMoves[topMoves.length - 1]?.move ?? legalMoves[0] ?? null;
+}
+
+export function chooseCpuMove(
+	state: GameState,
+	difficulty: number,
+	random = Math.random,
+): Position | null {
+	return chooseMoveWithConfig(state, configForDifficulty(difficulty), random, {
+		allowMistakes: true,
+	});
+}
+
+export function chooseRecommendedMove(
+	state: GameState,
+	difficulty = 10,
+): Position | null {
+	if (state.phase !== "idle" || state.isDraw) return null;
+	const cells = state.rows * state.cols;
+	const config = configForDifficulty(difficulty);
+	return chooseMoveWithConfig(
+		state,
+		{
+			...config,
+			depth: Math.min(config.depth, cells <= 12 ? 2 : 3),
+			candidateLimit: Math.min(config.candidateLimit, cells <= 12 ? 6 : 10),
+			mistakeProbability: 0,
+			softmaxTemperature: 0,
+		},
+		() => 0.5,
+		{
+			allowMistakes: false,
+			maxNodes: cells <= 12 ? 1_400 : cells <= 24 ? 3_500 : 6_000,
+			maxThinkMs: cells <= 12 ? 16 : cells <= 24 ? 28 : 40,
+		},
+	);
+}

@@ -116,7 +116,43 @@ describe("chain reaction engine", () => {
 		expect(isStableBoard(result.state.board, 3, 3)).toBe(true);
 	});
 
-	it("resolves dense late-game cascades without hanging", () => {
+	it("declares winner immediately when a resolving chain eliminates all opponents", () => {
+		const state = withState({
+			rows: 3,
+			cols: 4,
+			currentPlayer: "p1",
+			turnNumber: 16,
+			hasPlayed: { p1: true, p2: true },
+			board: [
+				[
+					{ owner: "p1", count: 1 },
+					{ owner: "p2", count: 2 },
+					{ owner: "p2", count: 2 },
+					{ owner: "p2", count: 1 },
+				],
+				[
+					{ owner: "p1", count: 2 },
+					{ owner: null, count: 0 },
+					{ owner: "p2", count: 3 },
+					{ owner: null, count: 0 },
+				],
+				[
+					{ owner: "p1", count: 1 },
+					{ owner: "p1", count: 2 },
+					{ owner: "p2", count: 1 },
+					{ owner: "p2", count: 1 },
+				],
+			],
+		});
+
+		const result = applyMove(state, 0, 0);
+
+		expect(result.state.winner).toBe("p1");
+		expect(result.state.isDraw).toBe(false);
+		expect(result.state.phase).toBe("gameOver");
+	});
+
+	it("ends dense late-game cascades without hanging", () => {
 		const state = withState({
 			rows: 6,
 			cols: 9,
@@ -194,9 +230,8 @@ describe("chain reaction engine", () => {
 
 		const result = applyMove(state, 0, 5);
 
-		expect(result.events.length).toBeGreaterThan(1);
-		expect(result.state.winner).toBe("p1");
 		expect(result.state.phase).toBe("gameOver");
+		expect(result.state.winner === "p1" || result.state.isDraw).toBe(true);
 	});
 
 	it("does not eliminate player before both players have taken first turn", () => {
@@ -233,8 +268,21 @@ describe("chain reaction engine", () => {
 		const nextPlayer = getNextPlayer({
 			currentPlayer: "p1",
 			eliminated: { p1: false, p2: true },
+			playerCount: 2,
 		});
 
 		expect(nextPlayer).toBe("p1");
+	});
+
+	it("cycles across all active players in multiplayer games", () => {
+		const state = createInitialGameState(4, 4, 4);
+
+		const first = applyMove(state, 0, 0).state;
+		const second = applyMove(first, 0, 1).state;
+		const third = applyMove(second, 0, 2).state;
+
+		expect(first.currentPlayer).toBe("p2");
+		expect(second.currentPlayer).toBe("p3");
+		expect(third.currentPlayer).toBe("p4");
 	});
 });

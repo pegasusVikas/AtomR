@@ -4,8 +4,9 @@ import {
 	redirect,
 	useNavigate,
 } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "#/lib/auth-client";
+import { type AuthModes, getAuthModesFn } from "#/lib/auth-mode-fns";
 import { getSessionFn } from "#/lib/session-fns";
 
 export const Route = createFileRoute("/sign-in")({
@@ -19,8 +20,6 @@ export const Route = createFileRoute("/sign-in")({
 });
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
-const isProd = import.meta.env.PROD;
-
 function AtomIcon({ size = 36 }: { size?: number }) {
 	return (
 		<svg
@@ -90,11 +89,37 @@ const labelStyle: React.CSSProperties = {
 
 function SignInPage() {
 	const navigate = useNavigate();
+	const [authModes, setAuthModes] = useState<AuthModes | null>(null);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [googleLoading, setGoogleLoading] = useState(false);
+
+	useEffect(() => {
+		let cancelled = false;
+		void getAuthModesFn()
+			.then((modes) => {
+				if (!cancelled) {
+					setAuthModes(modes);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setAuthModes({
+						isLocal: false,
+						googleEnabled: false,
+						emailPasswordEnabled: false,
+					});
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const googleEnabled = authModes?.googleEnabled ?? false;
+	const emailPasswordEnabled = authModes?.emailPasswordEnabled ?? false;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -238,12 +263,18 @@ function SignInPage() {
 							color: "rgba(255,255,255,0.38)",
 						}}
 					>
-						{isProd
+						{googleEnabled
 							? "Continue with your Google account"
-							: "Enter your credentials to continue"}
+							: emailPasswordEnabled
+								? "Enter your credentials to continue"
+								: "Auth is unavailable right now"}
 					</p>
 
-					{isProd ? (
+					{authModes == null ? (
+						<div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+							Loading auth options…
+						</div>
+					) : googleEnabled ? (
 						<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 							<button
 								type="button"
@@ -283,7 +314,7 @@ function SignInPage() {
 								</div>
 							)}
 						</div>
-					) : (
+					) : emailPasswordEnabled ? (
 						<form
 							onSubmit={handleSubmit}
 							style={{ display: "flex", flexDirection: "column", gap: 18 }}
@@ -357,10 +388,23 @@ function SignInPage() {
 								{loading ? "SIGNING IN…" : "SIGN IN →"}
 							</button>
 						</form>
+					) : (
+						<div
+							style={{
+								padding: "10px 14px",
+								background: "rgba(224,92,58,0.1)",
+								border: "1px solid rgba(224,92,58,0.25)",
+								borderRadius: 10,
+								fontSize: 13,
+								color: "#e87055",
+							}}
+						>
+							No sign-in method is configured.
+						</div>
 					)}
 				</div>
 
-				{!isProd ? (
+				{emailPasswordEnabled ? (
 					<p
 						style={{
 							textAlign: "center",

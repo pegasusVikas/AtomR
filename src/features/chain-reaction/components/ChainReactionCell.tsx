@@ -1,10 +1,6 @@
 import { PLAYER_COLORS } from "../constants";
-import {
-	getCellCapacity,
-	isCellCritical,
-	isCellThreatened,
-} from "../selectors";
-import type { Cell, GameState, Position } from "../types";
+import { getCellCapacity, isCellCritical } from "../selectors";
+import type { Cell, GameState, PlayerId, Position } from "../types";
 
 type ChainReactionCellProps = {
 	state: GameState;
@@ -16,6 +12,8 @@ type ChainReactionCellProps = {
 	isExploding: boolean;
 	isCapturing: boolean;
 	isLastMove: boolean;
+	isSuggested: boolean;
+	suggestedPlayer?: PlayerId | null;
 	onPlay: () => void;
 };
 
@@ -99,14 +97,16 @@ export default function ChainReactionCell({
 	isExploding,
 	isCapturing,
 	isLastMove,
+	isSuggested,
+	suggestedPlayer,
 	onPlay,
 }: ChainReactionCellProps) {
 	const ownerColor = cell.owner ? PLAYER_COLORS[cell.owner] : null;
+	const suggestionColor = suggestedPlayer
+		? PLAYER_COLORS[suggestedPlayer]
+		: null;
 	const capacity = getCellCapacity(state, position.row, position.col);
 	const critical = isCellCritical(state, cell, position.row, position.col);
-	const threatened =
-		cell.owner !== null &&
-		isCellThreatened(state, position.row, position.col, cell.owner);
 	const disabled = !isLegal || isAnimating;
 
 	// Background tint
@@ -154,11 +154,9 @@ export default function ChainReactionCell({
 							boxShadow:
 								critical && ownerColor
 									? `inset 0 0 0 1px ${ownerColor}, 0 0 10px ${ownerColor}77`
-									: threatened
-										? `inset 0 0 0 1px rgba(255,255,255,0.18)`
-										: isCapturing
-											? `inset 0 0 0 1px ${activeColor}88`
-											: "none",
+									: isCapturing
+										? `inset 0 0 0 1px ${activeColor}88`
+										: "none",
 						} as React.CSSProperties
 					}
 				/>
@@ -168,6 +166,16 @@ export default function ChainReactionCell({
 						className="absolute inset-[5px] rounded-[4px] pointer-events-none"
 						style={{
 							boxShadow: `inset 0 0 0 2px ${activeColor}, 0 0 0 1px ${activeColor}44, 0 0 16px ${activeColor}55`,
+						}}
+					/>
+				)}
+
+				{isSuggested && suggestionColor && (
+					<span
+						className="absolute inset-[6px] rounded-[4px] border border-dashed pointer-events-none"
+						style={{
+							borderColor: `${suggestionColor}99`,
+							boxShadow: `0 0 0 1px ${suggestionColor}22, inset 0 0 14px ${suggestionColor}12`,
 						}}
 					/>
 				)}

@@ -1,3 +1,4 @@
+import { getActivePlayerOrder } from "./constants";
 import { getCapacity } from "./engine";
 
 import type { Cell, GameState, PlayerId } from "./types";
@@ -24,12 +25,11 @@ export function isCellCritical(
 }
 
 export function isCellThreatened(
-	state: Pick<GameState, "board" | "rows" | "cols">,
+	state: Pick<GameState, "board" | "rows" | "cols" | "playerCount">,
 	row: number,
 	col: number,
 	playerId: PlayerId,
 ) {
-	const enemyPlayer = playerId === "p1" ? "p2" : "p1";
 	const neighbors = [
 		{ row: row - 1, col },
 		{ row, col: col + 1 },
@@ -48,7 +48,11 @@ export function isCellThreatened(
 		}
 
 		const neighborCell = state.board[neighbor.row][neighbor.col];
-		if (neighborCell.owner !== enemyPlayer) {
+		if (
+			!neighborCell.owner ||
+			neighborCell.owner === playerId ||
+			!getActivePlayerOrder(state.playerCount).includes(neighborCell.owner)
+		) {
 			return false;
 		}
 

@@ -14,8 +14,10 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlayTrainingRouteImport } from './routes/play/training'
 import { Route as PlayOnlineRouteImport } from './routes/play/online'
 import { Route as PlayLocalRouteImport } from './routes/play/local'
+import { Route as PlayAiRouteImport } from './routes/play/ai'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoStorybookRouteImport } from './routes/demo/storybook'
 import { Route as DemoPosthogRouteImport } from './routes/demo/posthog'
@@ -50,6 +52,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayTrainingRoute = PlayTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => PlayRoute,
+} as any)
 const PlayOnlineRoute = PlayOnlineRouteImport.update({
   id: '/online',
   path: '/online',
@@ -58,6 +65,11 @@ const PlayOnlineRoute = PlayOnlineRouteImport.update({
 const PlayLocalRoute = PlayLocalRouteImport.update({
   id: '/local',
   path: '/local',
+  getParentRoute: () => PlayRoute,
+} as any)
+const PlayAiRoute = PlayAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => PlayRoute,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
@@ -112,8 +124,10 @@ export interface FileRoutesByFullPath {
   '/demo/posthog': typeof DemoPosthogRoute
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/play/ai': typeof PlayAiRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
+  '/play/training': typeof PlayTrainingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -129,8 +143,10 @@ export interface FileRoutesByTo {
   '/demo/posthog': typeof DemoPosthogRoute
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/play/ai': typeof PlayAiRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
+  '/play/training': typeof PlayTrainingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -147,8 +163,10 @@ export interface FileRoutesById {
   '/demo/posthog': typeof DemoPosthogRoute
   '/demo/storybook': typeof DemoStorybookRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/play/ai': typeof PlayAiRoute
   '/play/local': typeof PlayLocalRoute
   '/play/online': typeof PlayOnlineRoute
+  '/play/training': typeof PlayTrainingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/play/match/$matchId': typeof PlayMatchMatchIdRoute
   '/play/room/$code': typeof PlayRoomCodeRoute
@@ -166,8 +184,10 @@ export interface FileRouteTypes {
     | '/demo/posthog'
     | '/demo/storybook'
     | '/demo/tanstack-query'
+    | '/play/ai'
     | '/play/local'
     | '/play/online'
+    | '/play/training'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -183,8 +203,10 @@ export interface FileRouteTypes {
     | '/demo/posthog'
     | '/demo/storybook'
     | '/demo/tanstack-query'
+    | '/play/ai'
     | '/play/local'
     | '/play/online'
+    | '/play/training'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -200,8 +222,10 @@ export interface FileRouteTypes {
     | '/demo/posthog'
     | '/demo/storybook'
     | '/demo/tanstack-query'
+    | '/play/ai'
     | '/play/local'
     | '/play/online'
+    | '/play/training'
     | '/api/auth/$'
     | '/play/match/$matchId'
     | '/play/room/$code'
@@ -258,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/play/training': {
+      id: '/play/training'
+      path: '/training'
+      fullPath: '/play/training'
+      preLoaderRoute: typeof PlayTrainingRouteImport
+      parentRoute: typeof PlayRoute
+    }
     '/play/online': {
       id: '/play/online'
       path: '/online'
@@ -270,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/local'
       fullPath: '/play/local'
       preLoaderRoute: typeof PlayLocalRouteImport
+      parentRoute: typeof PlayRoute
+    }
+    '/play/ai': {
+      id: '/play/ai'
+      path: '/ai'
+      fullPath: '/play/ai'
+      preLoaderRoute: typeof PlayAiRouteImport
       parentRoute: typeof PlayRoute
     }
     '/demo/tanstack-query': {
@@ -332,15 +370,19 @@ declare module '@tanstack/react-router' {
 }
 
 interface PlayRouteChildren {
+  PlayAiRoute: typeof PlayAiRoute
   PlayLocalRoute: typeof PlayLocalRoute
   PlayOnlineRoute: typeof PlayOnlineRoute
+  PlayTrainingRoute: typeof PlayTrainingRoute
   PlayMatchMatchIdRoute: typeof PlayMatchMatchIdRoute
   PlayRoomCodeRoute: typeof PlayRoomCodeRoute
 }
 
 const PlayRouteChildren: PlayRouteChildren = {
+  PlayAiRoute: PlayAiRoute,
   PlayLocalRoute: PlayLocalRoute,
   PlayOnlineRoute: PlayOnlineRoute,
+  PlayTrainingRoute: PlayTrainingRoute,
   PlayMatchMatchIdRoute: PlayMatchMatchIdRoute,
   PlayRoomCodeRoute: PlayRoomCodeRoute,
 }

@@ -1,183 +1,304 @@
-import { PLAYER_COLORS, PLAYER_NAMES } from "../constants";
-import { countPlayerCells, countPlayerOrbsInState } from "../selectors";
-import { formatBoardCoordinate } from "../shared";
-import type { GameState, LastMove, PlayerId } from "../types";
+import { Link } from "@tanstack/react-router";
+import { Home, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { getActivePlayerOrder, PLAYER_COLORS } from "../constants";
+import type { GameState, PlayerId } from "../types";
+
+const REEL_TRANSITION_MS = 380;
 
 type GameHudProps = {
 	state: GameState;
-	lastMove: LastMove | null;
-	onReset: () => void;
 	onSettingsOpen: () => void;
 };
 
-function PlayerChip({
-	playerId,
-	state,
-	align,
-}: {
-	playerId: PlayerId;
-	state: GameState;
-	align: "left" | "right";
-}) {
-	const isActive = state.currentPlayer === playerId && state.winner === null;
-	const isEliminated = state.eliminated[playerId];
+function getPlayersInRotation(state: GameState): PlayerId[] {
+	const activePlayers = getActivePlayerOrder(state.playerCount).filter(
+		(playerId) => !(state.eliminated[playerId] ?? false),
+	);
+
+	if (activePlayers.length > 0) return activePlayers;
+	if (state.winner) return [state.winner];
+	return [state.currentPlayer];
+}
+
+function getWrappedPlayer(
+	players: PlayerId[],
+	index: number,
+	offset: number,
+): PlayerId {
+	const length = players.length;
+	const wrappedIndex = (index + offset + length * 8) % length;
+	return players[wrappedIndex] ?? players[0] ?? "p1";
+}
+
+function getVisibleWindow(
+	players: PlayerId[],
+	index: number,
+): [PlayerId, PlayerId, PlayerId] {
+	return [
+		getWrappedPlayer(players, index, -1),
+		getWrappedPlayer(players, index, 0),
+		getWrappedPlayer(players, index, 1),
+	];
+}
+
+function getAnimatedStrip(
+	players: PlayerId[],
+	index: number,
+	direction: -1 | 1,
+): [PlayerId, PlayerId, PlayerId, PlayerId] {
+	return direction === 1
+		? [
+				getWrappedPlayer(players, index, -1),
+				getWrappedPlayer(players, index, 0),
+				getWrappedPlayer(players, index, 1),
+				getWrappedPlayer(players, index, 2),
+			]
+		: [
+				getWrappedPlayer(players, index, -2),
+				getWrappedPlayer(players, index, -1),
+				getWrappedPlayer(players, index, 0),
+				getWrappedPlayer(players, index, 1),
+			];
+}
+
+function ReelOrb({ playerId }: { playerId: PlayerId }) {
 	const color = PLAYER_COLORS[playerId];
-	const orbs = countPlayerOrbsInState(state, playerId);
-	const cells = countPlayerCells(state, playerId);
-	const isRight = align === "right";
 
 	return (
 		<div
-			className={`flex flex-col gap-1 transition-opacity duration-500 ${isEliminated ? "opacity-20" : ""} ${isRight ? "items-end" : "items-start"}`}
+			className="flex h-[42px] w-full items-center justify-center rounded-[16px] sm:h-[48px] sm:rounded-[18px]"
+			style={{
+				background: `linear-gradient(180deg, color-mix(in srgb, ${color} 10%, rgba(255,255,255,0.03)), rgba(255,255,255,0.015))`,
+				boxShadow: `inset 0 1px 0 ${color}0d, 0 8px 24px rgba(0,0,0,0.18)`,
+			}}
 		>
-			{/* Name row with active dot */}
-			<div
-				className={`flex items-center gap-1.5 ${isRight ? "flex-row-reverse" : ""}`}
-			>
-				<span
-					className="h-1.5 w-1.5 rounded-full transition-all duration-700"
-					style={{
-						backgroundColor: isActive ? color : "rgba(255,255,255,0.1)",
-						boxShadow: isActive
-							? `0 0 6px ${color}, 0 0 12px ${color}88`
-							: "none",
-					}}
-				/>
-				<span
-					className="text-[10px] font-semibold uppercase tracking-[0.25em]"
-					style={{
-						fontFamily: "'Oxanium', sans-serif",
-						color: isActive ? color : "rgba(255,255,255,0.28)",
-						transition: "color 0.6s ease",
-					}}
-				>
-					{PLAYER_NAMES[playerId]}
-				</span>
-			</div>
-
-			{/* Stats row */}
-			<div
-				className={`flex items-baseline gap-2 ${isRight ? "flex-row-reverse" : ""}`}
-			>
-				<span
-					className="text-3xl font-bold leading-none"
-					style={{
-						fontFamily: "'JetBrains Mono', monospace",
-						color: isActive
-							? "rgba(255,255,255,0.92)"
-							: "rgba(255,255,255,0.18)",
-						transition: "color 0.6s ease",
-					}}
-				>
-					{orbs}
-				</span>
-				<span
-					className="text-[9px] uppercase tracking-widest"
-					style={{
-						fontFamily: "'Oxanium', sans-serif",
-						color: "rgba(255,255,255,0.18)",
-					}}
-				>
-					orbs
-				</span>
-				<span
-					className="text-[9px] uppercase tracking-widest"
-					style={{
-						fontFamily: "'JetBrains Mono', monospace",
-						color: "rgba(255,255,255,0.14)",
-					}}
-				>
-					{cells}c
-				</span>
-			</div>
+			<span
+				className="block h-5 w-5 rounded-full sm:h-6 sm:w-6"
+				style={{
+					backgroundColor: color,
+					boxShadow: `0 0 14px ${color}4f`,
+				}}
+			/>
 		</div>
 	);
 }
 
-export default function GameHud({
-	state,
-	lastMove,
-	onReset,
-	onSettingsOpen,
-}: GameHudProps) {
-	const isResolving = state.phase === "resolving";
+function TurnReel({
+	players,
+	currentPlayer,
+	isResolving,
+	isWinnerLocked,
+}: {
+	players: PlayerId[];
+	currentPlayer: PlayerId;
+	isResolving: boolean;
+	isWinnerLocked: boolean;
+}) {
+	const currentIndex = Math.max(0, players.indexOf(currentPlayer));
+	const [displayIndex, setDisplayIndex] = useState(currentIndex);
+	const [animation, setAnimation] = useState<{
+		direction: -1 | 1;
+		fromIndex: number;
+		phase: "idle" | "running";
+		toIndex: number;
+	} | null>(null);
+	const timerRef = useRef<number | null>(null);
+	const frameRef = useRef<number | null>(null);
 
-	const centerLabel = isResolving ? "···" : state.winner ? "WIN" : "VS";
+	useEffect(() => {
+		return () => {
+			if (timerRef.current !== null) {
+				window.clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			if (frameRef.current !== null) {
+				window.cancelAnimationFrame(frameRef.current);
+				frameRef.current = null;
+			}
+		};
+	}, []);
 
-	const centerColor = isResolving
-		? "rgba(255,255,255,0.4)"
-		: state.winner
-			? PLAYER_COLORS[state.winner]
-			: "rgba(255,255,255,0.1)";
-	const lastMoveLabel = lastMove
-		? `${PLAYER_NAMES[lastMove.player]} ${formatBoardCoordinate(lastMove.row, lastMove.col)}`
-		: "No moves yet";
+	useEffect(() => {
+		if (timerRef.current !== null) {
+			window.clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		if (frameRef.current !== null) {
+			window.cancelAnimationFrame(frameRef.current);
+			frameRef.current = null;
+		}
+
+		if (players.length <= 1 || isResolving || isWinnerLocked) {
+			setDisplayIndex(currentIndex);
+			setAnimation(null);
+			return;
+		}
+
+		if (currentIndex === displayIndex) {
+			setAnimation(null);
+			return;
+		}
+
+		const nextIndex = (displayIndex + 1) % players.length;
+		const previousIndex = (displayIndex - 1 + players.length) % players.length;
+		const direction =
+			currentIndex === nextIndex
+				? 1
+				: currentIndex === previousIndex
+					? -1
+					: null;
+
+		if (direction === null) {
+			setDisplayIndex(currentIndex);
+			setAnimation(null);
+			return;
+		}
+
+		setAnimation({
+			direction,
+			fromIndex: displayIndex,
+			phase: "idle",
+			toIndex: currentIndex,
+		});
+		frameRef.current = window.requestAnimationFrame(() => {
+			setAnimation((current) =>
+				current ? { ...current, phase: "running" } : current,
+			);
+			frameRef.current = null;
+		});
+
+		timerRef.current = window.setTimeout(() => {
+			setDisplayIndex(currentIndex);
+			setAnimation(null);
+			timerRef.current = null;
+		}, REEL_TRANSITION_MS);
+	}, [currentIndex, displayIndex, isResolving, isWinnerLocked, players.length]);
+
+	const settledWindow = getVisibleWindow(players, displayIndex);
+	const animatedStrip = animation
+		? getAnimatedStrip(players, animation.fromIndex, animation.direction)
+		: null;
+	const trackTransform = animation
+		? animation.direction === 1
+			? animation.phase === "running"
+				? "translateX(-25%)"
+				: "translateX(0%)"
+			: animation.phase === "running"
+				? "translateX(0%)"
+				: "translateX(-25%)"
+		: "translateX(0%)";
 
 	return (
-		<div className="flex items-center gap-2">
-			{/* Player 1 */}
-			<div className="flex-1">
-				<PlayerChip playerId="p1" state={state} align="left" />
-			</div>
+		<div className="relative w-full min-w-0 overflow-hidden rounded-[18px] sm:rounded-[22px]">
+			<div
+				className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 sm:w-6"
+				style={{
+					background:
+						"linear-gradient(90deg, rgba(7,7,11,0.95), rgba(7,7,11,0))",
+				}}
+			/>
+			<div
+				className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 sm:w-6"
+				style={{
+					background:
+						"linear-gradient(270deg, rgba(7,7,11,0.95), rgba(7,7,11,0))",
+				}}
+			/>
+			{animation && animatedStrip ? (
+				<div
+					className="grid w-[133.333%] grid-cols-4 gap-1.5 px-0.5 py-0.5 sm:gap-2 sm:px-1 sm:py-1"
+					style={{
+						transform: trackTransform,
+						transition: `transform ${REEL_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+					}}
+				>
+					{animatedStrip.map((playerId, slotIndex) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: fixed four-slot animation strip
+							key={`${playerId}-${slotIndex}`}
+						>
+							<ReelOrb playerId={playerId} />
+						</div>
+					))}
+				</div>
+			) : (
+				<div className="grid grid-cols-3 gap-1.5 px-0.5 py-0.5 sm:gap-2 sm:px-1 sm:py-1">
+					{settledWindow.map((playerId, slotIndex) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: fixed three-slot reel
+							key={`${playerId}-${slotIndex}`}
+						>
+							<ReelOrb playerId={playerId} />
+						</div>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
 
-			{/* Center — status + game title + reset */}
-			<div className="flex shrink-0 flex-col items-center gap-1">
-				<button
-					type="button"
-					onClick={onReset}
-					className="px-2 py-0.5 text-[9px] uppercase tracking-[0.35em] transition-opacity duration-150 hover:opacity-60 active:scale-95"
+export default function GameHud({ state, onSettingsOpen }: GameHudProps) {
+	const playersInRotation = getPlayersInRotation(state);
+	const reelPlayer = state.winner ?? state.currentPlayer;
+	const isResolving = state.phase === "resolving";
+	const isWinnerLocked = Boolean(state.winner || state.isDraw);
+
+	return (
+		<div
+			className="w-full rounded-[22px] px-1.5 py-1.5 sm:rounded-[24px] sm:px-2 sm:py-2"
+			style={{
+				background:
+					"linear-gradient(180deg, rgba(10,10,16,0.92), rgba(7,7,11,0.82))",
+				boxShadow: "0 16px 48px rgba(0,0,0,0.18)",
+			}}
+		>
+			<div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
+				<Link
+					to="/play"
+					aria-label="Home"
+					className="flex h-9 w-9 items-center justify-center rounded-full no-underline transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3"
 					style={{
+						background: "rgba(255,255,255,0.02)",
+						color: "rgba(255,255,255,0.66)",
 						fontFamily: "'Oxanium', sans-serif",
-						color: "rgba(255,255,255,0.2)",
+						fontSize: "10px",
+						fontWeight: 700,
+						letterSpacing: "0.22em",
+						textTransform: "uppercase",
 					}}
 				>
-					reset
-				</button>
-				<span
-					className="text-xl font-extrabold leading-none tracking-tight transition-colors duration-700"
-					style={{
-						fontFamily: "'Oxanium', sans-serif",
-						color: centerColor,
-						minWidth: "2.5rem",
-						textAlign: "center",
-					}}
-				>
-					{centerLabel}
-				</span>
-				<span
-					className="text-[8px] uppercase tracking-[0.4em]"
-					style={{
-						fontFamily: "'Oxanium', sans-serif",
-						color: "rgba(255,255,255,0.1)",
-					}}
-				>
-					chain
-				</span>
-				<span
-					className="text-[8px] uppercase tracking-[0.18em]"
-					style={{
-						fontFamily: "'JetBrains Mono', monospace",
-						color: "rgba(255,255,255,0.26)",
-					}}
-				>
-					{lastMoveLabel}
-				</span>
+					<Home size={14} strokeWidth={2} />
+					<span className="hidden min-[480px]:inline">home</span>
+				</Link>
+
+				<div className="flex min-w-0 items-center">
+					<TurnReel
+						players={playersInRotation}
+						currentPlayer={reelPlayer}
+						isResolving={isResolving}
+						isWinnerLocked={isWinnerLocked}
+					/>
+				</div>
+
 				<button
 					type="button"
 					onClick={onSettingsOpen}
-					className="px-2 py-0.5 text-[8px] uppercase tracking-[0.35em] transition-opacity duration-150 hover:opacity-60 active:scale-95"
+					aria-label="Board settings"
+					className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3"
 					style={{
+						background: "rgba(255,255,255,0.02)",
+						color: "rgba(255,255,255,0.58)",
 						fontFamily: "'Oxanium', sans-serif",
-						color: "rgba(255,255,255,0.15)",
+						fontSize: "10px",
+						fontWeight: 700,
+						letterSpacing: "0.22em",
+						textTransform: "uppercase",
 					}}
 				>
-					board
+					<SlidersHorizontal size={14} strokeWidth={2} />
+					<span className="hidden min-[480px]:inline">board</span>
 				</button>
-			</div>
-
-			{/* Player 2 */}
-			<div className="flex flex-1 justify-end">
-				<PlayerChip playerId="p2" state={state} align="right" />
 			</div>
 		</div>
 	);

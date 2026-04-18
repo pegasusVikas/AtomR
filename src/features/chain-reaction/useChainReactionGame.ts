@@ -255,12 +255,17 @@ function buildPlaybackSteps(
 	return steps;
 }
 
-export function useChainReactionGame(rows = 6, cols = 9) {
+export function useChainReactionGame(
+	rows = 6,
+	cols = 9,
+	playerCount = 2,
+	resetToken = 0,
+) {
 	const [resolvedState, setResolvedState] = useState<GameState>(() =>
-		createInitialGameState(rows, cols),
+		createInitialGameState(rows, cols, playerCount),
 	);
 	const [displayedState, setDisplayedState] = useState<GameState>(() =>
-		createInitialGameState(rows, cols),
+		createInitialGameState(rows, cols, playerCount),
 	);
 	const [activeExplosionKeys, setActiveExplosionKeys] = useState<string[]>([]);
 	const [activeCaptureKeys, setActiveCaptureKeys] = useState<string[]>([]);
@@ -289,8 +294,10 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 		};
 	}, []);
 
-	// Reset when board dimensions change (skip initial mount — state is already correct)
+	// Reset when board dimensions change or a caller requests a hard reset
 	useEffect(() => {
+		void resetToken;
+
 		if (!didMountRef.current) {
 			didMountRef.current = true;
 			return;
@@ -298,14 +305,14 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 		for (const t of timersRef.current) window.clearTimeout(t);
 		timersRef.current = [];
 		isAnimatingRef.current = false;
-		const initialState = createInitialGameState(rows, cols);
+		const initialState = createInitialGameState(rows, cols, playerCount);
 		setResolvedState(initialState);
 		setDisplayedState(initialState);
 		setActiveExplosionKeys([]);
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
 		setLastMove(null);
-	}, [rows, cols]);
+	}, [rows, cols, playerCount, resetToken]);
 
 	function finishPlayback(nextState: GameState) {
 		isAnimatingRef.current = false;
@@ -387,7 +394,7 @@ export function useChainReactionGame(rows = 6, cols = 9) {
 
 	function reset() {
 		clearPlaybackTimers();
-		const initialState = createInitialGameState(rows, cols);
+		const initialState = createInitialGameState(rows, cols, playerCount);
 		setResolvedState(initialState);
 		setDisplayedState(initialState);
 		setActiveExplosionKeys([]);

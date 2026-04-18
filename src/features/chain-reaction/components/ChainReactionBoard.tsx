@@ -1,5 +1,5 @@
 import { isLegalMove } from "../engine";
-import type { GameState, LastMove } from "../types";
+import type { GameState, LastMove, PlayerId, Position } from "../types";
 import type { ActiveExplosion } from "../useChainReactionGame";
 import ChainReactionCell from "./ChainReactionCell";
 import FlyingOrbOverlay from "./FlyingOrbOverlay";
@@ -13,6 +13,8 @@ type ChainReactionBoardProps = {
 	activeExplosions: ActiveExplosion[];
 	cellSize: number;
 	lastMove?: LastMove | null;
+	suggestedMove?: Position | null;
+	suggestedPlayer?: PlayerId | null;
 	onPlay: (row: number, col: number) => void;
 };
 
@@ -25,6 +27,8 @@ export default function ChainReactionBoard({
 	activeExplosions,
 	cellSize,
 	lastMove,
+	suggestedMove,
+	suggestedPlayer,
 	onPlay,
 }: ChainReactionBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
@@ -51,6 +55,8 @@ export default function ChainReactionBoard({
 						(lastMove.turnNumber === state.turnNumber ||
 							lastMove.turnNumber === state.turnNumber + 1)
 					}
+					isSuggested={suggestedMove?.row === row && suggestedMove?.col === col}
+					suggestedPlayer={suggestedPlayer}
 					onPlay={() => onPlay(row, col)}
 				/>,
 			);
