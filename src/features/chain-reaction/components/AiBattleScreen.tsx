@@ -6,10 +6,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { configForDifficulty } from "#/features/chain-reaction/ai";
 import {
-	chooseCpuMove,
-	configForDifficulty,
-} from "#/features/chain-reaction/ai";
+	requestCpuMove,
+	type AiMoveTask,
+} from "#/features/chain-reaction/ai-worker-client";
 import {
 	getActivePlayerOrder,
 	PLAYER_COLORS,
@@ -59,6 +60,7 @@ export default function AiBattleScreen() {
 	} = useChainReactionGame(rows, cols, playerCount, settingsResetToken);
 
 	const cpuTimerRef = useRef<number | null>(null);
+	const cpuTaskRef = useRef<AiMoveTask | null>(null);
 
 	const clearCpuTimer = useCallback(() => {
 		if (cpuTimerRef.current !== null) {
@@ -67,8 +69,14 @@ export default function AiBattleScreen() {
 		}
 	}, []);
 
+	const cancelCpuTask = useCallback(() => {
+		cpuTaskRef.current?.cancel();
+		cpuTaskRef.current = null;
+	}, []);
+
 	useEffect(() => {
 		clearCpuTimer();
+		cancelCpuTask();
 		setIsThinking(false);
 
 		if (
@@ -82,23 +90,39 @@ export default function AiBattleScreen() {
 		const { thinkDelayMs } = configForDifficulty(difficulty);
 		setIsThinking(true);
 		cpuTimerRef.current = window.setTimeout(() => {
-			const move = chooseCpuMove(resolvedState, difficulty);
 			cpuTimerRef.current = null;
-			setIsThinking(false);
-			if (!move) return;
-			handleMove(move);
+			const task = requestCpuMove(resolvedState, difficulty);
+			cpuTaskRef.current = task;
+			void task.promise
+				.then((move) => {
+					if (cpuTaskRef.current !== task) return;
+					setIsThinking(false);
+					if (!move) return;
+					handleMove(move);
+				})
+				.catch(() => {
+					if (cpuTaskRef.current !== task) return;
+					setIsThinking(false);
+				})
+				.finally(() => {
+					if (cpuTaskRef.current === task) {
+						cpuTaskRef.current = null;
+					}
+				});
 		}, thinkDelayMs);
 
 		return () => {
 			clearCpuTimer();
+			cancelCpuTask();
 		};
-	}, [clearCpuTimer, difficulty, handleMove, resolvedState]);
+	}, [cancelCpuTask, clearCpuTimer, difficulty, handleMove, resolvedState]);
 
 	useEffect(() => {
 		return () => {
 			clearCpuTimer();
+			cancelCpuTask();
 		};
-	}, [clearCpuTimer]);
+	}, [cancelCpuTask, clearCpuTimer]);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(

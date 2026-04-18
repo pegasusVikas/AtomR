@@ -5,7 +5,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { chooseRecommendedMove } from "#/features/chain-reaction/ai";
+import {
+	requestRecommendedMove,
+	type AiMoveTask,
+} from "#/features/chain-reaction/ai-worker-client";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";
 import { getRecommendedSize } from "#/features/chain-reaction/utils/recommendedSize";
@@ -49,6 +52,12 @@ export default function TrainingPlayScreen() {
 		null,
 	);
 	const suggestionTimerRef = useRef<number | null>(null);
+	const suggestionTaskRef = useRef<AiMoveTask | null>(null);
+
+	function cancelSuggestionTask() {
+		suggestionTaskRef.current?.cancel();
+		suggestionTaskRef.current = null;
+	}
 
 	useLayoutEffect(() => {
 		const element = containerRef.current;
@@ -93,21 +102,34 @@ export default function TrainingPlayScreen() {
 			suggestionTimerRef.current = null;
 		}
 
+		cancelSuggestionTask();
 		setSuggestedMove(null);
 
 		if (resolvedState.phase !== "idle") {
 			return;
 		}
-
 		suggestionTimerRef.current = window.setTimeout(() => {
 			suggestionTimerRef.current = null;
-			const nextSuggestedMove = chooseRecommendedMove(
-				resolvedState,
-				TRAINING_DIFFICULTY,
-			);
-			startTransition(() => {
-				setSuggestedMove(nextSuggestedMove);
-			});
+			const task = requestRecommendedMove(resolvedState, TRAINING_DIFFICULTY);
+			suggestionTaskRef.current = task;
+			void task.promise
+				.then((nextSuggestedMove) => {
+					if (suggestionTaskRef.current !== task) return;
+					startTransition(() => {
+						setSuggestedMove(nextSuggestedMove);
+					});
+				})
+				.catch(() => {
+					if (suggestionTaskRef.current !== task) return;
+					startTransition(() => {
+						setSuggestedMove(null);
+					});
+				})
+				.finally(() => {
+					if (suggestionTaskRef.current === task) {
+						suggestionTaskRef.current = null;
+					}
+				});
 		}, 0);
 
 		return () => {
@@ -115,6 +137,7 @@ export default function TrainingPlayScreen() {
 				window.clearTimeout(suggestionTimerRef.current);
 				suggestionTimerRef.current = null;
 			}
+			cancelSuggestionTask();
 		};
 	}, [resolvedState]);
 
@@ -124,6 +147,7 @@ export default function TrainingPlayScreen() {
 				window.clearTimeout(suggestionTimerRef.current);
 				suggestionTimerRef.current = null;
 			}
+			cancelSuggestionTask();
 		};
 	}, []);
 
