@@ -32,7 +32,7 @@ const STEPS = [
 	{
 		num: "03",
 		title: "CHAIN",
-		desc: "Explosions cascade. A single orb can flip the entire board in one chain reaction.",
+		desc: "Explosions cascade. One move can flip the whole board.",
 	},
 	{
 		num: "04",
@@ -205,7 +205,7 @@ function HomePage() {
 							color: "rgba(255,255,255,0.35)",
 						}}
 					>
-						Chain Reaction · Strategy Game
+						Strategy Board Game
 					</div>
 
 					{/* Title */}
@@ -244,7 +244,7 @@ function HomePage() {
 						}}
 					>
 						A deterministic strategy game of cascading explosions. Place orbs,
-						trigger chain reactions, outlast your opponent.
+						cascade, outlast your opponent.
 					</p>
 
 					{/* CTAs */}
