@@ -34,7 +34,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.167.22",
     "@tanstack/store": "latest",
-    "better-auth": "^1.6.2",
+    "better-auth": "1.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.35.1",
