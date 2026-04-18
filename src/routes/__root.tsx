@@ -58,7 +58,9 @@ function RootLayout() {
 		<>
 			{!isNoChrome ? <Sidebar /> : null}
 			<div
-				className={!isNoChrome ? "min-w-0 pl-55 max-[960px]:pl-0" : undefined}
+				className={
+					!isNoChrome ? "min-w-0 pl-[274px] max-[960px]:pl-0" : undefined
+				}
 			>
 				<Outlet />
 			</div>
