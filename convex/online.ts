@@ -6,18 +6,18 @@ import {
 	applyMove,
 	createInitialGameState,
 	pickRandomLegalMove,
-} from '../src/features/chain-reaction/shared-engine'
+} from '../src/features/atomr/shared-engine'
 import {
 	ONLINE_TURN_TIME_LIMIT_MS,
 	createPlayerFlags,
 	type GameState,
 	type PlayerId,
-} from '../src/features/chain-reaction/shared'
+} from '../src/features/atomr/shared'
 import {
 	evaluateSearchingQueue,
 	isMatchedQueueEntryObsolete as isMatchedQueueEntryObsoleteRule,
 	isSearchingQueueEntryStale,
-} from '../src/features/chain-reaction/onlineMatchmaking'
+} from '../src/features/atomr/onlineMatchmaking'
 
 const MIN_PRIVATE_ROWS = 3
 const MAX_PRIVATE_ROWS = 12
@@ -165,8 +165,11 @@ function alphabet() {
 function makeRoomCode() {
 	const chars = alphabet()
 	let code = ''
-	for (let i = 0; i < 5; i += 1) {
-		code += chars[Math.floor(Math.random() * chars.length)]
+	const maxUnbiasedValue = 256 - (256 % chars.length)
+	while (code.length < 5) {
+		const [value] = crypto.getRandomValues(new Uint8Array(1))
+		if (value >= maxUnbiasedValue) continue
+		code += chars[value % chars.length]
 	}
 	return code
 }
