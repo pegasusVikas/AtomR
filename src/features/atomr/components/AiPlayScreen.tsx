@@ -17,6 +17,7 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
+import ReplayPanel from "./ReplayPanel";
 
 const PLAYER_NAMES = {
 	p1: "Player",
@@ -30,6 +31,7 @@ export default function AiPlayScreen() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [isCpuThinking, setIsCpuThinking] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
+	const [replayOpen, setReplayOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -47,6 +49,7 @@ export default function AiPlayScreen() {
 		activeCaptureKeys,
 		activeExplosions,
 		lastMove,
+		moveHistory,
 	} = useAtomRGame(rows, cols, 2, settingsResetToken);
 
 	const cpuTimerRef = useRef<number | null>(null);
@@ -204,6 +207,11 @@ export default function AiPlayScreen() {
 						state={state}
 						onReset={reset}
 						playerNames={PLAYER_NAMES}
+						onReplay={
+							moveHistory.length > 0
+								? () => setReplayOpen(true)
+								: undefined
+						}
 					/>
 				</div>
 			</div>
@@ -225,6 +233,16 @@ export default function AiPlayScreen() {
 					setSettingsResetToken((token) => token + 1);
 				}}
 				onClose={() => setSettingsOpen(false)}
+			/>
+
+			<ReplayPanel
+				open={replayOpen}
+				onClose={() => setReplayOpen(false)}
+				moveHistory={moveHistory}
+				rows={rows}
+				cols={cols}
+				playerCount={2}
+				playerNames={PLAYER_NAMES}
 			/>
 		</main>
 	);

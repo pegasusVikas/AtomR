@@ -13,6 +13,7 @@ import type {
 	Position,
 	ResolutionEvent,
 } from "./types";
+import { formatBoardCoordinate } from "./shared";
 
 function applyEventToBoard(board: Board, event: ResolutionEvent): Board {
 	const next = board.map((r) => r.map((c) => ({ ...c })));
@@ -57,6 +58,16 @@ export type ActiveExplosion = {
 };
 
 type SimulatedExplosion = Omit<ActiveExplosion, "animKey">;
+
+export type MoveRecord = {
+	turnNumber: number;
+	player: PlayerId;
+	row: number;
+	col: number;
+	coordinate: string;
+	boardBefore: Board;
+	boardAfter: Board;
+};
 
 type PlaybackStep = {
 	board: Board;
@@ -273,6 +284,7 @@ export function useAtomRGame(
 		[],
 	);
 	const [lastMove, setLastMove] = useState<LastMove | null>(null);
+	const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
 	const timersRef = useRef<number[]>([]);
 	const animationCycleRef = useRef(0);
 	const isAnimatingRef = useRef(false);
@@ -382,14 +394,29 @@ export function useAtomRGame(
 	function handleMove({ row, col }: Coordinates) {
 		if (!isLegalMove(displayedState, row, col) || isAnimatingRef.current)
 			return;
+		const boardBefore = cloneBoard(displayedState.board);
 		const result = applyMove(displayedState, row, col);
+		const currentPlayer = displayedState.currentPlayer;
+		const turnNum = displayedState.turnNumber + 1;
 		setLastMove({
 			row,
 			col,
-			player: displayedState.currentPlayer,
-			turnNumber: displayedState.turnNumber + 1,
+			player: currentPlayer,
+			turnNumber: turnNum,
 			didExplode: result.events.some((event) => event.type === "explode"),
 		});
+		setMoveHistory((prev) => [
+			...prev,
+			{
+				turnNumber: turnNum,
+				player: currentPlayer,
+				row,
+				col,
+				coordinate: formatBoardCoordinate(row, col),
+				boardBefore,
+				boardAfter: cloneBoard(result.state.board),
+			},
+		]);
 		playEvents(result.events, result.state, displayedState.board);
 	}
 
@@ -402,6 +429,7 @@ export function useAtomRGame(
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
 		setLastMove(null);
+		setMoveHistory([]);
 	}
 
 	return {
@@ -412,6 +440,7 @@ export function useAtomRGame(
 		activeCaptureKeys,
 		activeExplosions,
 		lastMove,
+		moveHistory,
 		handleMove,
 		reset,
 	};
