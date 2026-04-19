@@ -8,7 +8,6 @@ type GameSettingsProps = {
 	playerCount?: number;
 	playerCountLocked?: boolean;
 	difficulty?: number;
-	difficultyLabel?: string;
 	onApply: (
 		rows: number,
 		cols: number,
@@ -25,7 +24,6 @@ export default function GameSettings({
 	playerCount,
 	playerCountLocked = true,
 	difficulty,
-	difficultyLabel,
 	onApply,
 	onClose,
 }: GameSettingsProps) {
@@ -70,6 +68,9 @@ export default function GameSettings({
 		fontWeight: 600,
 		color: "rgba(255,255,255,0.88)",
 	};
+
+	const sliderStyle = (thumbColor: string): React.CSSProperties =>
+		({ "--thumb-color": thumbColor, height: "4px" }) as React.CSSProperties;
 
 	return (
 		<>
@@ -132,8 +133,8 @@ export default function GameSettings({
 							max={12}
 							value={localRows}
 							onChange={(e) => setLocalRows(Number(e.target.value))}
-							className="w-full cursor-pointer appearance-none rounded-full"
-							style={{ accentColor: "oklch(0.72 0.19 23)", height: "4px" }}
+							className="settings-slider w-full cursor-pointer appearance-none rounded-full"
+							style={sliderStyle("oklch(0.72 0.19 23)")}
 						/>
 						<div
 							className="flex justify-between"
@@ -160,8 +161,8 @@ export default function GameSettings({
 							max={16}
 							value={localCols}
 							onChange={(e) => setLocalCols(Number(e.target.value))}
-							className="w-full cursor-pointer appearance-none rounded-full"
-							style={{ accentColor: "oklch(0.72 0.19 23)", height: "4px" }}
+							className="settings-slider w-full cursor-pointer appearance-none rounded-full"
+							style={sliderStyle("oklch(0.72 0.19 23)")}
 						/>
 						<div
 							className="flex justify-between"
@@ -210,11 +211,8 @@ export default function GameSettings({
 									max={8}
 									value={localPlayerCount}
 									onChange={(e) => setLocalPlayerCount(Number(e.target.value))}
-									className="w-full cursor-pointer appearance-none rounded-full"
-									style={{
-										accentColor: "rgba(255,255,255,0.7)",
-										height: "4px",
-									}}
+									className="settings-slider w-full cursor-pointer appearance-none rounded-full"
+									style={sliderStyle("rgba(255,255,255,0.7)")}
 								/>
 								<div
 									className="flex justify-between"
@@ -235,22 +233,7 @@ export default function GameSettings({
 						<div className="flex flex-col gap-2">
 							<div className="flex items-center justify-between">
 								<span style={labelStyle}>cpu difficulty</span>
-								<div className="flex items-center gap-2">
-									<span style={valueStyle}>{localDifficulty}</span>
-									{difficultyLabel ? (
-										<span
-											style={{
-												fontFamily: "'Oxanium', sans-serif",
-												fontSize: "8px",
-												color: "rgba(255,255,255,0.4)",
-												textTransform: "uppercase",
-												letterSpacing: "0.2em",
-											}}
-										>
-											{difficultyLabel}
-										</span>
-									) : null}
-								</div>
+								<span style={valueStyle}>{localDifficulty}</span>
 							</div>
 							<input
 								type="range"
@@ -258,8 +241,8 @@ export default function GameSettings({
 								max={10}
 								value={localDifficulty}
 								onChange={(e) => setLocalDifficulty(Number(e.target.value))}
-								className="w-full cursor-pointer appearance-none rounded-full"
-								style={{ accentColor: "oklch(0.78 0.16 210)", height: "4px" }}
+								className="settings-slider w-full cursor-pointer appearance-none rounded-full"
+								style={sliderStyle("oklch(0.78 0.16 210)")}
 							/>
 							<div
 								className="flex justify-between"
