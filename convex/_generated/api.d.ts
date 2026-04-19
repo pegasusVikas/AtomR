@@ -11,7 +11,6 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as online from "../online.js";
-import type * as todos from "../todos.js";
 
 import type {
   ApiFromModules,
@@ -23,7 +22,6 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   online: typeof online;
-  todos: typeof todos;
 }>;
 
 /**

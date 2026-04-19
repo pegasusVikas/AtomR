@@ -160,13 +160,4 @@ export default defineSchema({
 		),
 		createdAt: v.number(),
 	}).index('by_match_id_turn_number', ['matchId', 'turnNumber']),
-  products: defineTable({
-    title: v.string(),
-    imageId: v.string(),
-    price: v.number(),
-  }),
-  todos: defineTable({
-    text: v.string(),
-    completed: v.boolean(),
-  }),
 })
