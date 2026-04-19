@@ -382,13 +382,14 @@ export function useChainReactionGame(
 	function handleMove({ row, col }: Coordinates) {
 		if (!isLegalMove(displayedState, row, col) || isAnimatingRef.current)
 			return;
+		const result = applyMove(displayedState, row, col);
 		setLastMove({
 			row,
 			col,
 			player: displayedState.currentPlayer,
 			turnNumber: displayedState.turnNumber + 1,
+			didExplode: result.events.some((event) => event.type === "explode"),
 		});
-		const result = applyMove(displayedState, row, col);
 		playEvents(result.events, result.state, displayedState.board);
 	}
 

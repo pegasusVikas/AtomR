@@ -12,6 +12,7 @@ import {
 import ChainReactionBoard from "#/features/chain-reaction/components/ChainReactionBoard";
 import GameOverlay from "#/features/chain-reaction/components/GameOverlay";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
+import { getCapacity } from "#/features/chain-reaction/engine";
 import {
 	type Board,
 	type GameState,
@@ -133,6 +134,7 @@ function MatchPage() {
 		player: PlayerId;
 		turnNumber: number;
 		baseTurn: number;
+		didExplode: boolean;
 	} | null>(null);
 
 	useEffect(() => {
@@ -193,11 +195,14 @@ function MatchPage() {
 			(event) => event.type === "place",
 		);
 		if (!placeEvent || !match) return null;
+		const didExplode =
+			match.lastMoveEvents?.some((event) => event.type === "explode") ?? false;
 		return {
 			row: placeEvent.row,
 			col: placeEvent.col,
 			player: placeEvent.player,
 			turnNumber: match.turnNumber,
+			didExplode,
 		};
 	}, [match, optimisticPlacement]);
 
@@ -472,6 +477,9 @@ function MatchPage() {
 								player: viewerPlayerId,
 								turnNumber: match.turnNumber + 1,
 								baseTurn: match.turnNumber,
+								didExplode:
+									matchState.board[row][col].count + 1 >=
+									getCapacity(row, col, matchState.rows, matchState.cols),
 							});
 
 							void submitMove({

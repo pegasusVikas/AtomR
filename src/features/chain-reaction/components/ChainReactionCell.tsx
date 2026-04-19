@@ -164,7 +164,8 @@ export default function ChainReactionCell({
 					<span
 						className="absolute inset-[5px] rounded-[4px] pointer-events-none"
 						style={{
-							boxShadow: `inset 0 0 0 2px ${activeColor}, 0 0 0 1px ${activeColor}44, 0 0 16px ${activeColor}55`,
+							boxShadow:
+								"inset 0 0 0 1px rgba(255,255,255,0.72), 0 0 0 1px rgba(255,255,255,0.1)",
 						}}
 					/>
 				)}

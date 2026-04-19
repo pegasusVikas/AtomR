@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Monitor, Swords, Wifi } from "lucide-react";
+import { Home, Swords } from "lucide-react";
 import { authClient } from "#/lib/auth-client";
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
@@ -51,14 +51,14 @@ function AtomIcon() {
 
 const NAV_ITEMS = [
 	{ to: "/" as const, label: "Home", icon: Home, exact: true },
-	{ to: "/play" as const, label: "Play Hub", icon: Swords, exact: true },
-	{ to: "/play/online" as const, label: "Online", icon: Wifi, exact: false },
-	{ to: "/play/local" as const, label: "Local", icon: Monitor, exact: false },
+	{ to: "/play" as const, label: "Play", icon: Swords, exact: true },
 ] as const;
 
 export default function Sidebar() {
 	const { data: session, isPending } = authClient.useSession();
 	const pathname = useRouterState({ select: (s) => s.location.pathname });
+	const userLabel = session?.user.name || session?.user.email?.split("@")[0];
+	const userInitial = session?.user.name?.charAt(0).toUpperCase() ?? "U";
 
 	return (
 		<aside
@@ -69,28 +69,74 @@ export default function Sidebar() {
 				<div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(58,204,224,0.12),transparent_68%)] opacity-90" />
 				<div className="pointer-events-none absolute right-[-28px] bottom-16 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(224,92,58,0.12),transparent_72%)] blur-2xl" />
 
-				<Link
-					to="/"
-					className="relative flex shrink-0 items-center gap-3 px-5 pt-5 pb-3 no-underline"
-				>
-					<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.035]">
-						<AtomIcon />
-					</div>
-					<div className="min-w-0 flex-1 pr-1">
-						<div className="text-[17px] leading-none font-semibold tracking-[0.11em] text-white">
-							Atom Reaction
+				<div className="relative flex items-center justify-between gap-3 px-5 pt-5 pb-2 max-[960px]:px-4 max-[960px]:pt-4 max-[460px]:items-start max-[460px]:gap-2">
+					<Link
+						to="/"
+						className="flex min-w-0 flex-1 items-center gap-3 no-underline max-[460px]:w-full"
+					>
+						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[0.035]">
+							<AtomIcon />
 						</div>
-					</div>
-				</Link>
+						<div className="min-w-0 flex-1">
+							<div className="text-[17px] leading-none font-semibold tracking-[0.09em] text-white max-[520px]:text-[16px] max-[520px]:tracking-[0.06em] max-[420px]:text-[15px] max-[420px]:tracking-[0.04em]">
+								Atom Reaction
+							</div>
+						</div>
+					</Link>
 
-				<nav className="relative flex flex-1 flex-col gap-1 px-3 py-2 max-[960px]:flex-none max-[960px]:flex-row max-[960px]:gap-2 max-[960px]:overflow-x-auto max-[960px]:px-3 max-[960px]:pt-0">
+					<div className="hidden items-center gap-2 max-[960px]:flex max-[460px]:shrink-0">
+						{isPending ? (
+							<div className="h-10 w-20 rounded-[16px] bg-white/[0.04]" />
+						) : session?.user ? (
+							<>
+								<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-white/[0.05]">
+									{session.user.image ? (
+										<img
+											src={session.user.image}
+											alt={session.user.name ?? "User"}
+											className="h-full w-full object-cover"
+										/>
+									) : (
+										<span className="text-sm font-semibold text-white/72">
+											{userInitial}
+										</span>
+									)}
+								</div>
+								<button
+									type="button"
+									onClick={async () => {
+										await fetch("/api/auth/sign-out", {
+											method: "POST",
+											credentials: "include",
+											headers: { "Content-Type": "application/json" },
+											body: "{}",
+										});
+										window.location.href = "/";
+									}}
+									className="inline-flex h-10 items-center justify-center rounded-[16px] bg-white/[0.05] px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/62 transition hover:bg-white/[0.08] hover:text-white/84 active:scale-[0.98] max-[520px]:px-3 max-[520px]:tracking-[0.12em]"
+								>
+									Sign Out
+								</button>
+							</>
+						) : (
+							<Link
+								to="/sign-in"
+								className="inline-flex h-10 items-center justify-center rounded-[16px] bg-white/[0.05] px-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/74 no-underline transition hover:bg-white/[0.08] active:scale-[0.98] max-[520px]:px-3 max-[520px]:tracking-[0.12em]"
+							>
+								Sign In
+							</Link>
+						)}
+					</div>
+				</div>
+
+				<nav className="relative flex flex-1 flex-col gap-1 px-3 py-2 max-[960px]:flex-none max-[960px]:flex-row max-[960px]:gap-2 max-[960px]:overflow-x-auto max-[960px]:px-2 max-[960px]:pt-1 max-[960px]:pb-3">
 					{NAV_ITEMS.map(({ to, label, icon: Icon, exact }) => {
 						const isActive = exact ? pathname === to : pathname.startsWith(to);
 						return (
 							<Link
 								key={to}
 								to={to}
-								className="group flex shrink-0 items-center gap-3 rounded-[18px] px-3 py-3 no-underline transition-all duration-200 max-[960px]:min-w-fit max-[960px]:px-4 max-[960px]:py-3"
+								className="group flex shrink-0 items-center gap-3 rounded-[18px] px-3 py-3 no-underline transition-all duration-200 max-[960px]:min-w-fit max-[960px]:gap-2 max-[960px]:rounded-[16px] max-[960px]:px-3.5 max-[960px]:py-2.5"
 								style={{
 									background: isActive
 										? "rgba(255,255,255,0.055)"
@@ -98,7 +144,7 @@ export default function Sidebar() {
 								}}
 							>
 								<div
-									className="flex h-10 w-10 items-center justify-center rounded-[14px] transition-colors duration-200"
+									className="flex h-10 w-10 items-center justify-center rounded-[14px] transition-colors duration-200 max-[960px]:h-9 max-[960px]:w-9"
 									style={{
 										background: isActive
 											? "rgba(58,204,224,0.12)"
@@ -112,7 +158,7 @@ export default function Sidebar() {
 								</div>
 								<div className="min-w-0">
 									<div
-										className="text-[13px] font-semibold tracking-[0.08em] transition-colors duration-200"
+										className="text-[13px] font-semibold tracking-[0.08em] transition-colors duration-200 max-[960px]:text-[12px]"
 										style={{
 											color: isActive ? "white" : "rgba(255,255,255,0.58)",
 										}}
@@ -125,7 +171,7 @@ export default function Sidebar() {
 					})}
 				</nav>
 
-				<div className="relative mt-auto px-3 pb-3 pt-2">
+				<div className="relative mt-auto px-3 pb-3 pt-2 max-[960px]:hidden">
 					{isPending ? (
 						<div className="h-14 rounded-[18px] bg-white/[0.04]" />
 					) : session?.user ? (
@@ -140,13 +186,13 @@ export default function Sidebar() {
 										/>
 									) : (
 										<span className="text-base font-semibold text-white/72">
-											{session.user.name?.charAt(0).toUpperCase() ?? "U"}
+											{userInitial}
 										</span>
 									)}
 								</div>
 								<div className="min-w-0 flex-1">
 									<div className="truncate text-[14px] font-semibold text-white/92">
-										{session.user.name || session.user.email?.split("@")[0]}
+										{userLabel}
 									</div>
 									<div className="truncate text-[11px] text-white/34 max-[420px]:hidden">
 										{session.user.email}

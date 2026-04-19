@@ -19,6 +19,7 @@ export type Position = {
 export type LastMove = Position & {
 	player: PlayerId;
 	turnNumber: number;
+	didExplode: boolean;
 };
 
 export type Cell = {

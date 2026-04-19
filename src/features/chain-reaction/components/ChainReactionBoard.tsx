@@ -52,6 +52,7 @@ export default function ChainReactionBoard({
 					isLastMove={
 						lastMove?.row === row &&
 						lastMove?.col === col &&
+						!lastMove.didExplode &&
 						(lastMove.turnNumber === state.turnNumber ||
 							lastMove.turnNumber === state.turnNumber + 1)
 					}

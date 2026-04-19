@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { authClient } from "#/lib/auth-client";
 import { api } from "../../convex/_generated/api";
@@ -11,93 +12,12 @@ export const Route = createFileRoute("/")({
 			{
 				name: "description",
 				content:
-					"A deterministic strategy game of cascading orb explosions. Play locally or challenge anyone online in real-time.",
+					"Deterministic board tactics with cascading orb explosions. Local, online, CPU, and training modes.",
 			},
 		],
 	}),
 	component: HomePage,
 });
-
-const STEPS = [
-	{
-		num: "01",
-		title: "PLACE",
-		desc: "On your turn, place one orb in any empty cell or a cell you already control.",
-	},
-	{
-		num: "02",
-		title: "EXPLODE",
-		desc: "When a cell reaches its critical mass it explodes, sending orbs into every adjacent cell.",
-	},
-	{
-		num: "03",
-		title: "CHAIN",
-		desc: "Explosions cascade. One move can flip the whole board.",
-	},
-	{
-		num: "04",
-		title: "CONQUER",
-		desc: "Last player with orbs remaining wins. No luck. No hidden state. Pure strategy.",
-	},
-];
-
-const GAME_MODES = [
-	{
-		label: "COACH",
-		title: "Training Mode",
-		description:
-			"Learn with a live ghost recommendation on every turn, powered by the same engine as CPU play.",
-		href: "/play/training" as const,
-		accent: "rgba(120,192,255,0.7)",
-		border: "rgba(120,192,255,0.22)",
-		background: "rgba(120,192,255,0.055)",
-		cta: "START TRAINING →",
-	},
-	{
-		label: "SOLO",
-		title: "AI Game",
-		description:
-			"Play against a CPU opponent with adjustable difficulty and the same chain-reaction board.",
-		href: "/play/ai" as const,
-		accent: "rgba(186,132,255,0.72)",
-		border: "rgba(186,132,255,0.24)",
-		background: "rgba(186,132,255,0.055)",
-		cta: "PLAY CPU →",
-	},
-	{
-		label: "SIM",
-		title: "AI Battle",
-		description:
-			"Spin up a full autonomous match and watch 2 to 8 bots play the board out.",
-		href: "/play/ai-battle" as const,
-		accent: "rgba(255,255,255,0.72)",
-		border: "rgba(255,255,255,0.12)",
-		background: "rgba(255,255,255,0.03)",
-		cta: "RUN BATTLE →",
-	},
-	{
-		label: "OFFLINE",
-		title: "Local Game",
-		description:
-			"Pass-and-play on one device. Choose your board size and challenge a friend locally.",
-		href: "/play/local" as const,
-		accent: "rgba(255,255,255,0.35)",
-		border: "rgba(255,255,255,0.08)",
-		background: "rgba(255,255,255,0.025)",
-		cta: "PLAY LOCAL →",
-	},
-	{
-		label: "REALTIME",
-		title: "Online Game",
-		description:
-			"Sign in and play against anyone, anywhere. Quick match or invite a friend to a private room.",
-		href: "/play/online" as const,
-		accent: "rgba(224,92,58,0.7)",
-		border: "rgba(224,92,58,0.22)",
-		background: "rgba(224,92,58,0.055)",
-		cta: "PLAY ONLINE →",
-	},
-] as const;
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
 
@@ -140,345 +60,54 @@ function HomePage() {
 
 	return (
 		<main
-			style={{
-				background: "#07070b",
-				minHeight: "100vh",
-				fontFamily: F,
-				color: "white",
-				position: "relative",
-				overflowX: "hidden",
-			}}
+			className="relative min-h-[100dvh] overflow-x-hidden bg-[#07070b] text-white max-[960px]:min-h-0"
+			style={{ fontFamily: F }}
 		>
-			{/* Dot-grid background */}
 			<div
+				className="pointer-events-none fixed inset-0 z-0"
 				style={{
-					position: "fixed",
-					inset: 0,
-					pointerEvents: "none",
-					zIndex: 0,
 					backgroundImage:
 						"radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
 					backgroundSize: "28px 28px",
 				}}
 			/>
-			{/* Ambient glow — P1 cyan top-left */}
-			<div
-				style={{
-					position: "fixed",
-					top: "-20%",
-					left: "-15%",
-					width: 700,
-					height: 700,
-					background:
-						"radial-gradient(circle, rgba(58,204,224,0.07) 0%, transparent 70%)",
-					borderRadius: "50%",
-					pointerEvents: "none",
-					zIndex: 0,
-				}}
-			/>
-			{/* Ambient glow — P2 orange top-right */}
-			<div
-				style={{
-					position: "fixed",
-					top: "-15%",
-					right: "-15%",
-					width: 600,
-					height: 600,
-					background:
-						"radial-gradient(circle, rgba(224,92,58,0.07) 0%, transparent 70%)",
-					borderRadius: "50%",
-					pointerEvents: "none",
-					zIndex: 0,
-				}}
-			/>
+			<div className="pointer-events-none fixed top-[-18%] left-[-12%] z-0 h-[680px] w-[680px] rounded-full bg-[radial-gradient(circle,rgba(58,204,224,0.08)_0%,transparent_68%)]" />
+			<div className="pointer-events-none fixed top-[-12%] right-[-14%] z-0 h-[560px] w-[560px] rounded-full bg-[radial-gradient(circle,rgba(224,92,58,0.08)_0%,transparent_68%)]" />
 
-			<div style={{ position: "relative", zIndex: 1 }}>
-				{/* ── HERO ── */}
-				<section
-					style={{
-						maxWidth: 960,
-						margin: "0 auto",
-						padding: "clamp(80px, 12vh, 140px) 24px clamp(60px, 8vh, 100px)",
-						textAlign: "center",
-					}}
-				>
-					{/* Badge */}
-					<div
-						style={{
-							display: "inline-block",
-							marginBottom: 40,
-							padding: "6px 18px",
-							border: "1px solid rgba(255,255,255,0.1)",
-							borderRadius: 100,
-							fontSize: 11,
-							letterSpacing: "0.35em",
-							textTransform: "uppercase",
-							color: "rgba(255,255,255,0.35)",
-						}}
-					>
-						Strategy Board Game
-					</div>
-
-					{/* Title */}
-					<h1
-						style={{
-							margin: "0 0 28px",
-							fontSize: "clamp(72px, 12vw, 128px)",
-							fontWeight: 800,
-							letterSpacing: "-0.04em",
-							lineHeight: 0.92,
-						}}
-					>
-						<span style={{ display: "block", color: "white" }}>ATOM</span>
-						<span
-							style={{
-								display: "block",
-								background:
-									"linear-gradient(90deg, oklch(0.72 0.19 195), oklch(0.72 0.19 23))",
-								WebkitBackgroundClip: "text",
-								WebkitTextFillColor: "transparent",
-								backgroundClip: "text",
-							}}
-						>
-							REACTION
-						</span>
-					</h1>
-
-					{/* Subtitle */}
-					<p
-						style={{
-							margin: "0 auto 52px",
-							fontSize: 16,
-							lineHeight: 1.8,
-							color: "rgba(255,255,255,0.42)",
-							maxWidth: 440,
-						}}
-					>
-						A deterministic strategy game of cascading explosions. Place orbs,
-						cascade, outlast your opponent.
-					</p>
-
-					{/* CTAs */}
-					<div
-						style={{
-							display: "flex",
-							gap: 12,
-							justifyContent: "center",
-							flexWrap: "wrap",
-						}}
-					>
-						<Link
-							to="/play"
-							style={{
-								display: "inline-flex",
-								alignItems: "center",
-								padding: "14px 32px",
-								background: "rgba(224,92,58,0.14)",
-								border: "1px solid rgba(224,92,58,0.4)",
-								borderRadius: 14,
-								color: "white",
-								textDecoration: "none",
-								fontSize: 13,
-								fontWeight: 700,
-								letterSpacing: "0.1em",
-								textTransform: "uppercase",
-							}}
-						>
-							PLAY NOW →
-						</Link>
-						<a
-							href="#how-to-play"
-							style={{
-								display: "inline-flex",
-								alignItems: "center",
-								padding: "14px 32px",
-								background: "rgba(255,255,255,0.03)",
-								border: "1px solid rgba(255,255,255,0.08)",
-								borderRadius: 14,
-								color: "rgba(255,255,255,0.55)",
-								textDecoration: "none",
-								fontSize: 13,
-								fontWeight: 600,
-								letterSpacing: "0.1em",
-								textTransform: "uppercase",
-							}}
-						>
-							HOW TO PLAY
-						</a>
-					</div>
-				</section>
-
-				{/* Divider */}
-				<div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px" }}>
-					<div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-				</div>
-
-				{/* ── HOW IT WORKS ── */}
-				<section
-					id="how-to-play"
-					style={{
-						maxWidth: 960,
-						margin: "0 auto",
-						padding: "clamp(60px, 8vh, 96px) 24px",
-					}}
-				>
-					<p
-						style={{
-							textAlign: "center",
-							fontSize: 11,
-							letterSpacing: "0.35em",
-							textTransform: "uppercase",
-							color: "rgba(255,255,255,0.22)",
-							margin: "0 0 48px",
-						}}
-					>
-						HOW IT WORKS
-					</p>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-							gap: 12,
-						}}
-					>
-						{STEPS.map(({ num, title, desc }) => (
-							<div
-								key={num}
-								style={{
-									padding: "26px 22px",
-									border: "1px solid rgba(255,255,255,0.07)",
-									borderRadius: 20,
-									background: "rgba(255,255,255,0.025)",
-								}}
-							>
-								<div
-									style={{
-										fontSize: 11,
-										letterSpacing: "0.3em",
-										color: "rgba(255,255,255,0.2)",
-										marginBottom: 14,
-									}}
-								>
-									{num}
-								</div>
-								<div
-									style={{
-										fontSize: 15,
-										fontWeight: 700,
-										marginBottom: 10,
-										letterSpacing: "0.06em",
-									}}
-								>
-									{title}
-								</div>
-								<p
-									style={{
-										fontSize: 13,
-										color: "rgba(255,255,255,0.42)",
-										lineHeight: 1.75,
-										margin: 0,
-									}}
-								>
-									{desc}
-								</p>
-							</div>
-						))}
-					</div>
-				</section>
-
-				{/* Divider */}
-				<div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px" }}>
-					<div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-				</div>
-
-				{/* ── GAME MODES ── */}
-				<section
-					style={{
-						maxWidth: 960,
-						margin: "0 auto",
-						padding: "clamp(60px, 8vh, 96px) 24px clamp(80px, 12vh, 140px)",
-					}}
-				>
-					<p
-						style={{
-							textAlign: "center",
-							fontSize: 11,
-							letterSpacing: "0.35em",
-							textTransform: "uppercase",
-							color: "rgba(255,255,255,0.22)",
-							margin: "0 0 48px",
-						}}
-					>
-						GAME MODES
-					</p>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-							gap: 16,
-						}}
-					>
-						{GAME_MODES.map((mode) => (
+			<div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1220px] flex-col justify-center px-4 py-6 sm:px-6 sm:py-8 max-[960px]:min-h-0">
+				<section className="max-w-[780px]">
+					<div>
+						<div className="flex items-center justify-between gap-4">
 							<Link
-								key={mode.href}
-								to={mode.href}
-								style={{ textDecoration: "none", display: "block" }}
+								to="/play"
+								className="hidden h-11 items-center justify-center rounded-full bg-white/[0.06] px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/82 no-underline transition hover:bg-white/[0.1] lg:inline-flex"
 							>
-								<div
-									style={{
-										padding: "34px 30px",
-										border: `1px solid ${mode.border}`,
-										borderRadius: 24,
-										background: mode.background,
-										height: "100%",
-										boxSizing: "border-box",
-									}}
-								>
-									<div
-										style={{
-											fontSize: 11,
-											letterSpacing: "0.35em",
-											textTransform: "uppercase",
-											color: "rgba(255,255,255,0.25)",
-											marginBottom: 18,
-										}}
-									>
-										{mode.label}
-									</div>
-									<div
-										style={{
-											fontSize: 22,
-											fontWeight: 700,
-											color: "white",
-											marginBottom: 12,
-										}}
-									>
-										{mode.title}
-									</div>
-									<p
-										style={{
-											fontSize: 14,
-											color: "rgba(255,255,255,0.42)",
-											lineHeight: 1.7,
-											margin: "0 0 24px",
-										}}
-									>
-										{mode.description}
-									</p>
-									<span
-										style={{
-											fontSize: 12,
-											fontWeight: 600,
-											letterSpacing: "0.08em",
-											textTransform: "uppercase",
-											color: mode.accent,
-										}}
-									>
-										{mode.cta}
-									</span>
-								</div>
+								Play
 							</Link>
-						))}
+						</div>
+
+						<h1 className="max-w-[8ch] text-[3.2rem] leading-[0.88] font-semibold tracking-[-0.08em] text-white sm:text-[4.8rem] lg:text-[6.1rem]">
+							Turn-based chain reactions.
+						</h1>
+						<p className="mt-4 max-w-[34ch] text-[15px] leading-7 text-white/56 sm:text-[16px]">
+							Place orbs. Capture cells. Clear the board.
+						</p>
+
+						<div className="mt-7 flex flex-wrap gap-3">
+							<Link
+								to="/play"
+								className="inline-flex h-12 items-center justify-center gap-2 rounded-[18px] bg-[rgba(224,92,58,0.14)] px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white no-underline transition hover:bg-[rgba(224,92,58,0.2)]"
+							>
+								Play
+								<ArrowRight size={15} strokeWidth={1.9} />
+							</Link>
+							<Link
+								to="/play/online"
+								className="inline-flex h-12 items-center justify-center rounded-[18px] bg-white/[0.03] px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/68 no-underline transition hover:bg-white/[0.05] hover:text-white/82"
+							>
+								Live Match
+							</Link>
+						</div>
 					</div>
 				</section>
 			</div>
