@@ -5,6 +5,7 @@ import {
 	useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import AtomReactionMark from "#/components/brand/AtomReactionMark";
 import { authClient } from "#/lib/auth-client";
 import { type AuthModes, getAuthModesFn } from "#/lib/auth-mode-fns";
 import { getSessionFn } from "#/lib/session-fns";
@@ -20,50 +21,6 @@ export const Route = createFileRoute("/sign-in")({
 });
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
-function AtomIcon({ size = 36 }: { size?: number }) {
-	return (
-		<svg
-			width={size}
-			height={size}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-			aria-label="Atom Reaction logo"
-		>
-			<title>Atom Reaction logo</title>
-			<circle cx="12" cy="12" r="2.5" fill="white" opacity="0.9" />
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(255,255,255,0.45)"
-				strokeWidth="1"
-				fill="none"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(58,204,224,0.5)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(60 12 12)"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(224,92,58,0.5)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(-60 12 12)"
-			/>
-		</svg>
-	);
-}
 
 const inputStyle: React.CSSProperties = {
 	width: "100%",
@@ -221,7 +178,7 @@ function SignInPage() {
 							gap: 12,
 						}}
 					>
-						<AtomIcon size={40} />
+						<AtomReactionMark size={40} title="Atom Reaction logo" />
 						<span
 							style={{
 								fontSize: 12,

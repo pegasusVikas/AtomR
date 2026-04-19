@@ -1,53 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Swords } from "lucide-react";
 import { authClient } from "#/lib/auth-client";
+import AtomReactionMark from "./brand/AtomReactionMark";
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
-
-function AtomIcon() {
-	return (
-		<svg
-			width={20}
-			height={20}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-			aria-hidden="true"
-		>
-			<title>Atom Reaction</title>
-			<circle cx="12" cy="12" r="2.5" fill="white" opacity="0.85" />
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(255,255,255,0.34)"
-				strokeWidth="1"
-				fill="none"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(58,204,224,0.58)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(60 12 12)"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(224,92,58,0.58)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(-60 12 12)"
-			/>
-		</svg>
-	);
-}
 
 const NAV_ITEMS = [
 	{ to: "/" as const, label: "Home", icon: Home, exact: true },
@@ -75,7 +31,7 @@ export default function Sidebar() {
 						className="flex min-w-0 flex-1 items-center gap-3 no-underline max-[460px]:w-full"
 					>
 						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[0.035]">
-							<AtomIcon />
+							<AtomReactionMark size={20} title="Atom Reaction" />
 						</div>
 						<div className="min-w-0 flex-1">
 							<div className="text-[17px] leading-none font-semibold tracking-[0.09em] text-white max-[520px]:text-[16px] max-[520px]:tracking-[0.06em] max-[420px]:text-[15px] max-[420px]:tracking-[0.04em]">

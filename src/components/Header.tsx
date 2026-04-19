@@ -1,53 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import BetterAuthHeader from "../integrations/better-auth/header-user";
+import AtomReactionMark from "./brand/AtomReactionMark";
 import ThemeToggle from "./ThemeToggle";
 
 const F = "'Oxanium', 'Segoe UI', sans-serif";
-
-function AtomIcon() {
-	return (
-		<svg
-			width={22}
-			height={22}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-			aria-hidden="true"
-		>
-			<title>Atom Reaction</title>
-			<circle cx="12" cy="12" r="2.5" fill="white" opacity="0.85" />
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(255,255,255,0.4)"
-				strokeWidth="1"
-				fill="none"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(58,204,224,0.45)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(60 12 12)"
-			/>
-			<ellipse
-				cx="12"
-				cy="12"
-				rx="9.5"
-				ry="3.5"
-				stroke="rgba(224,92,58,0.45)"
-				strokeWidth="1"
-				fill="none"
-				transform="rotate(-60 12 12)"
-			/>
-		</svg>
-	);
-}
 
 export default function Header() {
 	return (
@@ -85,7 +41,7 @@ export default function Header() {
 						flexShrink: 0,
 					}}
 				>
-					<AtomIcon />
+					<AtomReactionMark size={22} title="Atom Reaction" />
 					<span
 						style={{
 							fontSize: 13,
