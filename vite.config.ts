@@ -14,11 +14,7 @@ const config = defineConfig({
 	},
 	server: {
 		watch: {
-			ignored: [
-				"**/.convex/**",
-				"**/.output/**",
-				"**/.pnpm-store/**",
-			],
+			ignored: ["**/.convex/**", "**/.output/**", "**/.pnpm-store/**"],
 			usePolling: true,
 			interval: 250,
 		},
@@ -48,22 +44,6 @@ const config = defineConfig({
 				display: "standalone",
 				start_url: "/",
 				icons: [
-					{
-						src: "/logo192.png",
-						sizes: "192x192",
-						type: "image/png",
-					},
-					{
-						src: "/logo512.png",
-						sizes: "512x512",
-						type: "image/png",
-					},
-					{
-						src: "/logo512.png",
-						sizes: "512x512",
-						type: "image/png",
-						purpose: "maskable",
-					},
 					{
 						src: "/brand/atom-reaction-mark.svg",
 						sizes: "any",

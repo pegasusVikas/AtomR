@@ -19,11 +19,6 @@ import { Route as PlayOnlineRouteImport } from './routes/play/online'
 import { Route as PlayLocalRouteImport } from './routes/play/local'
 import { Route as PlayAiBattleRouteImport } from './routes/play/ai-battle'
 import { Route as PlayAiRouteImport } from './routes/play/ai'
-import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
-import { Route as DemoStorybookRouteImport } from './routes/demo/storybook'
-import { Route as DemoPosthogRouteImport } from './routes/demo/posthog'
-import { Route as DemoConvexRouteImport } from './routes/demo/convex'
-import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
 import { Route as PlayRoomCodeRouteImport } from './routes/play/room.$code'
 import { Route as PlayMatchMatchIdRouteImport } from './routes/play/match.$matchId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -78,31 +73,6 @@ const PlayAiRoute = PlayAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => PlayRoute,
 } as any)
-const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
-  id: '/demo/tanstack-query',
-  path: '/demo/tanstack-query',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStorybookRoute = DemoStorybookRouteImport.update({
-  id: '/demo/storybook',
-  path: '/demo/storybook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoPosthogRoute = DemoPosthogRouteImport.update({
-  id: '/demo/posthog',
-  path: '/demo/posthog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoConvexRoute = DemoConvexRouteImport.update({
-  id: '/demo/convex',
-  path: '/demo/convex',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoBetterAuthRoute = DemoBetterAuthRouteImport.update({
-  id: '/demo/better-auth',
-  path: '/demo/better-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlayRoomCodeRoute = PlayRoomCodeRouteImport.update({
   id: '/room/$code',
   path: '/room/$code',
@@ -125,11 +95,6 @@ export interface FileRoutesByFullPath {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/posthog': typeof DemoPosthogRoute
-  '/demo/storybook': typeof DemoStorybookRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
   '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
@@ -145,11 +110,6 @@ export interface FileRoutesByTo {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/posthog': typeof DemoPosthogRoute
-  '/demo/storybook': typeof DemoStorybookRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
   '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
@@ -166,11 +126,6 @@ export interface FileRoutesById {
   '/play': typeof PlayRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/posthog': typeof DemoPosthogRoute
-  '/demo/storybook': typeof DemoStorybookRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/play/ai': typeof PlayAiRoute
   '/play/ai-battle': typeof PlayAiBattleRoute
   '/play/local': typeof PlayLocalRoute
@@ -188,11 +143,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/posthog'
-    | '/demo/storybook'
-    | '/demo/tanstack-query'
     | '/play/ai'
     | '/play/ai-battle'
     | '/play/local'
@@ -208,11 +158,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/posthog'
-    | '/demo/storybook'
-    | '/demo/tanstack-query'
     | '/play/ai'
     | '/play/ai-battle'
     | '/play/local'
@@ -228,11 +173,6 @@ export interface FileRouteTypes {
     | '/play'
     | '/sign-in'
     | '/sign-up'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/posthog'
-    | '/demo/storybook'
-    | '/demo/tanstack-query'
     | '/play/ai'
     | '/play/ai-battle'
     | '/play/local'
@@ -249,11 +189,6 @@ export interface RootRouteChildren {
   PlayRoute: typeof PlayRouteWithChildren
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
-  DemoBetterAuthRoute: typeof DemoBetterAuthRoute
-  DemoConvexRoute: typeof DemoConvexRoute
-  DemoPosthogRoute: typeof DemoPosthogRoute
-  DemoStorybookRoute: typeof DemoStorybookRoute
-  DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -329,41 +264,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayAiRouteImport
       parentRoute: typeof PlayRoute
     }
-    '/demo/tanstack-query': {
-      id: '/demo/tanstack-query'
-      path: '/demo/tanstack-query'
-      fullPath: '/demo/tanstack-query'
-      preLoaderRoute: typeof DemoTanstackQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/storybook': {
-      id: '/demo/storybook'
-      path: '/demo/storybook'
-      fullPath: '/demo/storybook'
-      preLoaderRoute: typeof DemoStorybookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/posthog': {
-      id: '/demo/posthog'
-      path: '/demo/posthog'
-      fullPath: '/demo/posthog'
-      preLoaderRoute: typeof DemoPosthogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/convex': {
-      id: '/demo/convex'
-      path: '/demo/convex'
-      fullPath: '/demo/convex'
-      preLoaderRoute: typeof DemoConvexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/better-auth': {
-      id: '/demo/better-auth'
-      path: '/demo/better-auth'
-      fullPath: '/demo/better-auth'
-      preLoaderRoute: typeof DemoBetterAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/play/room/$code': {
       id: '/play/room/$code'
       path: '/room/$code'
@@ -416,11 +316,6 @@ const rootRouteChildren: RootRouteChildren = {
   PlayRoute: PlayRouteWithChildren,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
-  DemoBetterAuthRoute: DemoBetterAuthRoute,
-  DemoConvexRoute: DemoConvexRoute,
-  DemoPosthogRoute: DemoPosthogRoute,
-  DemoStorybookRoute: DemoStorybookRoute,
-  DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

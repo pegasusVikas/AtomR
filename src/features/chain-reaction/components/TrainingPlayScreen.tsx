@@ -1,13 +1,14 @@
 import {
 	startTransition,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
 import {
-	requestRecommendedMove,
 	type AiMoveTask,
+	requestRecommendedMove,
 } from "#/features/chain-reaction/ai-worker-client";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";
@@ -54,10 +55,10 @@ export default function TrainingPlayScreen() {
 	const suggestionTimerRef = useRef<number | null>(null);
 	const suggestionTaskRef = useRef<AiMoveTask | null>(null);
 
-	function cancelSuggestionTask() {
+	const cancelSuggestionTask = useCallback(() => {
 		suggestionTaskRef.current?.cancel();
 		suggestionTaskRef.current = null;
-	}
+	}, []);
 
 	useLayoutEffect(() => {
 		const element = containerRef.current;
@@ -139,7 +140,7 @@ export default function TrainingPlayScreen() {
 			}
 			cancelSuggestionTask();
 		};
-	}, [resolvedState]);
+	}, [cancelSuggestionTask, resolvedState]);
 
 	useEffect(() => {
 		return () => {
@@ -149,7 +150,7 @@ export default function TrainingPlayScreen() {
 			}
 			cancelSuggestionTask();
 		};
-	}, []);
+	}, [cancelSuggestionTask]);
 
 	return (
 		<main

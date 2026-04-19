@@ -8,8 +8,8 @@ import {
 } from "react";
 import { configForDifficulty } from "#/features/chain-reaction/ai";
 import {
-	requestCpuMove,
 	type AiMoveTask,
+	requestCpuMove,
 } from "#/features/chain-reaction/ai-worker-client";
 import { PLAYER_COLORS } from "#/features/chain-reaction/constants";
 import { useChainReactionGame } from "#/features/chain-reaction/useChainReactionGame";

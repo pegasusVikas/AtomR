@@ -43,10 +43,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				href: "/brand/atom-reaction-mark.svg",
 			},
 			{
-				rel: "apple-touch-icon",
-				href: "/logo192.png",
-			},
-			{
 				rel: "manifest",
 				href: "/manifest.webmanifest",
 			},

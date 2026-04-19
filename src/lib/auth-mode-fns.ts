@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { api } from "../../convex/_generated/api";
 import { fetchAuthQuery } from "#/lib/auth-server";
+import { api } from "../../convex/_generated/api";
 
 export type AuthModes = {
 	isLocal: boolean;

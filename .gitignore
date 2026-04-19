@@ -13,3 +13,7 @@ __unconfig*
 todos.json
 .vercel
 .tmp*
+.plans/
+AGENTS.md
+.cursorrules
+.cta.json

@@ -1,6 +1,7 @@
 {
   "name": "atom-reaction",
   "private": true,
+  "description": "Turn-based chain-reaction board game built with TanStack Start, Convex, and Better Auth.",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
@@ -12,6 +13,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
