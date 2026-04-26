@@ -19,15 +19,19 @@ function MiniBoard({
 	board,
 	rows,
 	cols,
+	playerCount,
 	highlightRow,
 	highlightCol,
+	highlightPlayer,
 	activeColor,
 }: {
 	board: Board;
 	rows: number;
 	cols: number;
+	playerCount: number;
 	highlightRow?: number;
 	highlightCol?: number;
+	highlightPlayer?: PlayerId;
 	activeColor: string;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -71,8 +75,8 @@ function MiniBoard({
 		board,
 		rows,
 		cols,
-		playerCount: 2,
-		currentPlayer: "p1",
+		playerCount,
+		currentPlayer: highlightPlayer ?? "p1",
 		turnNumber: 0,
 		hasPlayed: {},
 		eliminated: {},
@@ -100,7 +104,7 @@ function MiniBoard({
 							? {
 									row: highlightRow,
 									col: highlightCol,
-									player: "p1" as PlayerId,
+									player: highlightPlayer ?? "p1",
 									turnNumber: 1,
 									didExplode: false,
 								}
@@ -119,6 +123,7 @@ export default function ReplayPanel({
 	moveHistory,
 	rows,
 	cols,
+	playerCount,
 	playerNames,
 }: ReplayPanelProps) {
 	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -156,7 +161,7 @@ export default function ReplayPanel({
 					return Math.min(moveHistory.length - 1, prev + 1);
 				});
 			}
-			if (e.key === "Tab") {
+			if (e.key.toLowerCase() === "b") {
 				e.preventDefault();
 				setShowAfter((prev) => !prev);
 			}
@@ -206,6 +211,8 @@ export default function ReplayPanel({
 			>
 				<div className="flex items-center gap-3">
 					<svg
+						aria-hidden="true"
+						focusable="false"
 						width="20"
 						height="20"
 						viewBox="0 0 24 24"
@@ -241,6 +248,8 @@ export default function ReplayPanel({
 					aria-label="Close replay"
 				>
 					<svg
+						aria-hidden="true"
+						focusable="false"
 						width="16"
 						height="16"
 						viewBox="0 0 24 24"
@@ -294,6 +303,8 @@ export default function ReplayPanel({
 								aria-label="Previous move"
 							>
 								<svg
+									aria-hidden="true"
+									focusable="false"
 									width="12"
 									height="12"
 									viewBox="0 0 24 24"
@@ -328,6 +339,8 @@ export default function ReplayPanel({
 								aria-label="Next move"
 							>
 								<svg
+									aria-hidden="true"
+									focusable="false"
 									width="12"
 									height="12"
 									viewBox="0 0 24 24"
@@ -501,8 +514,10 @@ export default function ReplayPanel({
 								board={boardToShow}
 								rows={rows}
 								cols={cols}
+								playerCount={playerCount}
 								highlightRow={selected.row}
 								highlightCol={selected.col}
+								highlightPlayer={selected.player}
 								activeColor={activeColor}
 							/>
 						) : (
@@ -511,6 +526,8 @@ export default function ReplayPanel({
 								style={{ color: "rgba(255,255,255,0.15)" }}
 							>
 								<svg
+									aria-hidden="true"
+									focusable="false"
 									width="48"
 									height="48"
 									viewBox="0 0 24 24"
@@ -591,7 +608,7 @@ export default function ReplayPanel({
 					className="text-[9px] uppercase tracking-[0.2em]"
 					style={{ color: "rgba(255,255,255,0.12)" }}
 				>
-					Tab toggle before/after
+					B toggle before/after
 				</span>
 				<span
 					className="text-[9px] uppercase tracking-[0.2em]"
