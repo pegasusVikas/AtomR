@@ -44,13 +44,17 @@ export default function AiPlayScreen() {
 		resolvedState,
 		handleMove,
 		reset,
+		undo,
 		isAnimating,
 		activeExplosionKeys,
 		activeCaptureKeys,
 		activeExplosions,
 		lastMove,
 		moveHistory,
-	} = useAtomRGame(rows, cols, 2, settingsResetToken);
+		canUndo,
+	} = useAtomRGame(rows, cols, 2, settingsResetToken, {
+		enableHistory: true,
+	});
 
 	const cpuTimerRef = useRef<number | null>(null);
 	const cpuTaskRef = useRef<AiMoveTask | null>(null);
@@ -115,6 +119,13 @@ export default function AiPlayScreen() {
 			cancelCpuTask();
 		};
 	}, [cancelCpuTask, clearCpuTimer]);
+
+	const handleUndoTurn = useCallback(() => {
+		clearCpuTimer();
+		cancelCpuTask();
+		setIsCpuThinking(false);
+		undo(resolvedState.turnNumber % 2 === 0 ? 2 : 1);
+	}, [cancelCpuTask, clearCpuTimer, resolvedState.turnNumber, undo]);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
@@ -181,7 +192,12 @@ export default function AiPlayScreen() {
 			/>
 
 			<div className="relative mx-auto w-full shrink-0" style={hudStyle}>
-				<GameHud state={state} onSettingsOpen={() => setSettingsOpen(true)} />
+				<GameHud
+					state={state}
+					onSettingsOpen={() => setSettingsOpen(true)}
+					onUndo={handleUndoTurn}
+					undoDisabled={!canUndo || isAnimating}
+				/>
 			</div>
 
 			<div

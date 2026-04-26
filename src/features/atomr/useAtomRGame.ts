@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	applyMove,
 	createInitialGameState,
@@ -78,6 +78,13 @@ type PlaybackStep = {
 };
 
 type Coordinates = { row: number; col: number };
+type HistorySnapshot = {
+	state: GameState;
+	lastMove: LastMove | null;
+};
+type UseAtomRGameOptions = {
+	enableHistory?: boolean;
+};
 
 function getPositionKey(row: number, col: number) {
 	return `${row}:${col}`;
@@ -271,7 +278,9 @@ export function useAtomRGame(
 	cols = 9,
 	playerCount = 2,
 	resetToken = 0,
+	options: UseAtomRGameOptions = {},
 ) {
+	const enableHistory = options.enableHistory ?? false;
 	const [resolvedState, setResolvedState] = useState<GameState>(() =>
 		createInitialGameState(rows, cols, playerCount),
 	);
@@ -285,7 +294,9 @@ export function useAtomRGame(
 	);
 	const [lastMove, setLastMove] = useState<LastMove | null>(null);
 	const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
+	const [canUndo, setCanUndo] = useState(false);
 	const timersRef = useRef<number[]>([]);
+	const historyRef = useRef<HistorySnapshot[]>([]);
 	const animationCycleRef = useRef(0);
 	const isAnimatingRef = useRef(false);
 	const didMountRef = useRef(false);
@@ -297,6 +308,11 @@ export function useAtomRGame(
 		timersRef.current = [];
 		isAnimatingRef.current = false;
 	}
+
+	const clearHistory = useCallback(() => {
+		historyRef.current = [];
+		setCanUndo(false);
+	}, []);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -324,7 +340,9 @@ export function useAtomRGame(
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
 		setLastMove(null);
-	}, [rows, cols, playerCount, resetToken]);
+		setMoveHistory([]);
+		clearHistory();
+	}, [rows, cols, playerCount, resetToken, clearHistory]);
 
 	function finishPlayback(nextState: GameState) {
 		isAnimatingRef.current = false;
@@ -417,7 +435,37 @@ export function useAtomRGame(
 				boardAfter: cloneBoard(result.state.board),
 			},
 		]);
+		if (enableHistory) {
+			historyRef.current = [
+				...historyRef.current,
+				{
+					state: resolvedState,
+					lastMove,
+				},
+			];
+			setCanUndo(true);
+		}
 		playEvents(result.events, result.state, displayedState.board);
+	}
+
+	function undo(moveCount = 1) {
+		if (!enableHistory || moveCount < 1) return 0;
+		const steps = Math.min(moveCount, historyRef.current.length);
+		if (steps === 0) return 0;
+
+		clearPlaybackTimers();
+		const snapshot = historyRef.current.at(-steps);
+		if (!snapshot) return 0;
+
+		historyRef.current = historyRef.current.slice(0, -steps);
+		setCanUndo(historyRef.current.length > 0);
+		setResolvedState(snapshot.state);
+		setDisplayedState(snapshot.state);
+		setActiveExplosionKeys([]);
+		setActiveCaptureKeys([]);
+		setActiveExplosions([]);
+		setLastMove(snapshot.lastMove);
+		return steps;
 	}
 
 	function reset() {
@@ -430,6 +478,7 @@ export function useAtomRGame(
 		setActiveExplosions([]);
 		setLastMove(null);
 		setMoveHistory([]);
+		clearHistory();
 	}
 
 	return {
@@ -441,7 +490,9 @@ export function useAtomRGame(
 		activeExplosions,
 		lastMove,
 		moveHistory,
+		canUndo,
 		handleMove,
+		undo,
 		reset,
 	};
 }
