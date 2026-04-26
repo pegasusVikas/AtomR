@@ -5,6 +5,7 @@ import {
 	getCapacity,
 	isLegalMove,
 } from "./engine";
+import { formatBoardCoordinate } from "./shared";
 import type {
 	Board,
 	GameState,
@@ -13,7 +14,6 @@ import type {
 	Position,
 	ResolutionEvent,
 } from "./types";
-import { formatBoardCoordinate } from "./shared";
 
 function applyEventToBoard(board: Board, event: ResolutionEvent): Board {
 	const next = board.map((r) => r.map((c) => ({ ...c })));

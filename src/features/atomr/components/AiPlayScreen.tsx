@@ -224,9 +224,7 @@ export default function AiPlayScreen() {
 						onReset={reset}
 						playerNames={PLAYER_NAMES}
 						onReplay={
-							moveHistory.length > 0
-								? () => setReplayOpen(true)
-								: undefined
+							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
 						}
 					/>
 				</div>

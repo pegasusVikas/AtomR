@@ -211,9 +211,7 @@ export default function AiBattleScreen() {
 						resetLabel="run again"
 						playerNames={playerNames}
 						onReplay={
-							moveHistory.length > 0
-								? () => setReplayOpen(true)
-								: undefined
+							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
 						}
 					/>
 				</div>

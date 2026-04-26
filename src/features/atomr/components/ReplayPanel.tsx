@@ -422,9 +422,7 @@ export default function ReplayPanel({
 										className="block h-3 w-3 shrink-0 rounded-full"
 										style={{
 											backgroundColor: color,
-											boxShadow: isSelected
-												? `0 0 8px ${color}55`
-												: "none",
+											boxShadow: isSelected ? `0 0 8px ${color}55` : "none",
 										}}
 									/>
 
@@ -433,9 +431,7 @@ export default function ReplayPanel({
 										<span
 											className="text-[11px] font-semibold truncate"
 											style={{
-												color: isSelected
-													? color
-													: "rgba(255,255,255,0.55)",
+												color: isSelected ? color : "rgba(255,255,255,0.55)",
 											}}
 										>
 											{name}
@@ -476,9 +472,7 @@ export default function ReplayPanel({
 									background: !showAfter
 										? `${activeColor}18`
 										: "rgba(255,255,255,0.02)",
-									color: !showAfter
-										? activeColor
-										: "rgba(255,255,255,0.25)",
+									color: !showAfter ? activeColor : "rgba(255,255,255,0.25)",
 									border: !showAfter
 										? `1px solid ${activeColor}33`
 										: "1px solid rgba(255,255,255,0.06)",
@@ -494,9 +488,7 @@ export default function ReplayPanel({
 									background: showAfter
 										? `${activeColor}18`
 										: "rgba(255,255,255,0.02)",
-									color: showAfter
-										? activeColor
-										: "rgba(255,255,255,0.25)",
+									color: showAfter ? activeColor : "rgba(255,255,255,0.25)",
 									border: showAfter
 										? `1px solid ${activeColor}33`
 										: "1px solid rgba(255,255,255,0.06)",

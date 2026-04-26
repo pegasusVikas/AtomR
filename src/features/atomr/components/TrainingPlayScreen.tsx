@@ -207,9 +207,7 @@ export default function TrainingPlayScreen() {
 						state={state}
 						onReset={reset}
 						onReplay={
-							moveHistory.length > 0
-								? () => setReplayOpen(true)
-								: undefined
+							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
 						}
 					/>
 				</div>
