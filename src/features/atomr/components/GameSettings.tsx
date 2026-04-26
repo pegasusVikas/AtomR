@@ -31,6 +31,11 @@ export default function GameSettings({
 	const [localCols, setLocalCols] = useState(cols);
 	const [localPlayerCount, setLocalPlayerCount] = useState(playerCount ?? 2);
 	const [localDifficulty, setLocalDifficulty] = useState(difficulty ?? 5);
+	const [hoverDims, setHoverDims] = useState<{ r: number; c: number } | null>(null);
+
+	const previewRows = hoverDims ? hoverDims.r : localRows;
+	const previewCols = hoverDims ? hoverDims.c : localCols;
+	const isValidSize = previewRows >= 3 && previewCols >= 4;
 
 	// Sync local state when modal opens
 	useEffect(() => {
@@ -121,21 +126,52 @@ export default function GameSettings({
 						</button>
 					</div>
 
-					{/* Rows */}
-					<div className="flex flex-col gap-2">
+					{/* Grid Size Selector */}
+					<div className="flex flex-col gap-3">
 						<div className="flex items-center justify-between">
-							<span style={labelStyle}>rows</span>
-							<span style={valueStyle}>{localRows}</span>
+							<span style={labelStyle}>grid size</span>
+							<span style={{...valueStyle, color: isValidSize ? valueStyle.color : "#ef4444"}}>
+								{previewCols} × {previewRows}
+							</span>
 						</div>
-						<input
-							type="range"
-							min={3}
-							max={12}
-							value={localRows}
-							onChange={(e) => setLocalRows(Number(e.target.value))}
-							className="settings-slider w-full cursor-pointer appearance-none rounded-full"
-							style={sliderStyle("oklch(0.72 0.19 23)")}
-						/>
+						
+						<div 
+							className="grid gap-[2px] w-full"
+							style={{ gridTemplateColumns: "repeat(16, minmax(0, 1fr))" }}
+							onMouseLeave={() => setHoverDims(null)}
+						>
+							{Array.from({ length: 12 }).map((_, r) => (
+								Array.from({ length: 16 }).map((_, c) => {
+									const rowNum = r + 1;
+									const colNum = c + 1;
+									const isHighlighted = rowNum <= previewRows && colNum <= previewCols;
+									
+									return (
+										<button
+											key={`${r}-${c}`}
+											type="button"
+											aria-label={`Select ${colNum} columns by ${rowNum} rows`}
+											onMouseEnter={() => setHoverDims({ r: rowNum, c: colNum })}
+											onClick={() => {
+												if (rowNum >= 3 && colNum >= 4) {
+													setLocalRows(rowNum);
+													setLocalCols(colNum);
+												}
+											}}
+											className="aspect-square rounded-[1px] sm:rounded-[2px] transition-colors duration-75"
+											style={{
+												backgroundColor: isHighlighted 
+													? (isValidSize ? "oklch(0.75 0.16 150)" : "#ef4444")
+													: "rgba(255,255,255,0.04)",
+												boxShadow: isHighlighted 
+													? `0 0 8px ${isValidSize ? "oklch(0.75 0.16 150 / 0.4)" : "rgba(239, 68, 68, 0.4)"}` 
+													: "none",
+											}}
+										/>
+									);
+								})
+							))}
+						</div>
 						<div
 							className="flex justify-between"
 							style={{
@@ -144,36 +180,8 @@ export default function GameSettings({
 								color: "rgba(255,255,255,0.15)",
 							}}
 						>
-							<span>3</span>
-							<span>12</span>
-						</div>
-					</div>
-
-					{/* Cols */}
-					<div className="flex flex-col gap-2">
-						<div className="flex items-center justify-between">
-							<span style={labelStyle}>columns</span>
-							<span style={valueStyle}>{localCols}</span>
-						</div>
-						<input
-							type="range"
-							min={4}
-							max={16}
-							value={localCols}
-							onChange={(e) => setLocalCols(Number(e.target.value))}
-							className="settings-slider w-full cursor-pointer appearance-none rounded-full"
-							style={sliderStyle("oklch(0.72 0.19 23)")}
-						/>
-						<div
-							className="flex justify-between"
-							style={{
-								fontFamily: "'JetBrains Mono', monospace",
-								fontSize: "8px",
-								color: "rgba(255,255,255,0.15)",
-							}}
-						>
-							<span>4</span>
-							<span>16</span>
+							<span>min 4×3</span>
+							<span>max 16×12</span>
 						</div>
 					</div>
 
